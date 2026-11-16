@@ -114,6 +114,7 @@ Phase 6, reports, is built (scripture projection stays on the website and isn't 
   - The phone gets only the notifications of the church it's signed in to. Signing out (here or with "sign out everywhere" on the website) stops them.
   - **More → Notifications** shows whether they're on, and opens the phone's settings if they were turned off.
 - **Installable test builds** with EAS. See [Test builds](#test-builds) below.
+- **Automatic updates**: changes reach installed apps without a new download. See [Updating installed apps](#updating-installed-apps).
 
 ## Running it
 
@@ -167,6 +168,23 @@ When it finishes, EAS prints a link and a QR code. Open it on the Android phone,
 
   EAS asks you to sign in to Apple and creates the certificates for you. The build is sent to App Store Connect; add testers in TestFlight there.
 - Or a direct install on registered iPhones: `npx eas-cli@latest device:create` (each tester opens the link once), then `npm run build:ios`.
+
+### Updating installed apps
+
+Installed builds update themselves over the air (EAS Update), so testers don't reinstall for each change.
+
+```bash
+npm run update:preview -- --message "What changed"      # to the test builds (APK / internal iPhone builds)
+npm run update:production -- --message "What changed"   # to store and TestFlight builds
+```
+
+- The app checks when it opens, and when it comes back to the front (at most every 30 minutes). It downloads in the background and uses the new version from the next start. **More → Restart to update** applies it straight away. Changes waiting to sync are kept.
+- Updates carry the app's code, screens and images. **These need a new build instead**: a new native module (`npx expo install` of a package with native code), a change to permissions, plugins or the icon in `app.json`, or a new Expo SDK. For those:
+  1. raise `version` in `app.json` (for example `1.0.0` → `1.1.0`);
+  2. run `npm run build:android` (and the iPhone build) and install it.
+
+  Updates only go to builds with the same `version`, so an update can never reach an app it doesn't fit.
+- Only builds made after updates were added (November 2026) receive them; install a fresh build once.
 
 ### Turning on push notifications
 
