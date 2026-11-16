@@ -35,5 +35,8 @@
     "test": "node --test --experimental-strip-types src/**/*.test.ts",
     "doctor": "expo-doctor"
   },
-  "private": true
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  }
 }

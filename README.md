@@ -22,7 +22,7 @@ Next phases add the rest of ShepherdOS: editing members offline, attendance and 
 
 ## Running it
 
-You need Node 20 or newer and the **Expo Go** app on your phone.
+You need **Node 22.13 or newer** (Expo SDK 58 won't run on Node 20) and the **Expo Go** app on your phone. With [nvm](https://github.com/nvm-sh/nvm), run `nvm install` in this folder: it reads `.nvmrc`.
 
 ```bash
 npm install
