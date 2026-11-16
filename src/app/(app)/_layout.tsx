@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { startAutoSync } from '@/lib/sync';
 import { handlePushTaps, registerForPush } from '@/lib/push';
 import { useAuth } from '@/lib/auth';
+import { watchForUpdates } from '@/lib/app-updates';
 import { useTheme } from '@/theme';
 
 export default function AppLayout() {
@@ -15,6 +16,7 @@ export default function AppLayout() {
     if (churchId) void registerForPush();
   }, [churchId]);
   useEffect(() => handlePushTaps(), []);
+  useEffect(() => watchForUpdates(), []);
   return (
     <Stack screenOptions={{ headerTintColor: colors.primary, headerStyle: { backgroundColor: colors.background }, headerShadowVisible: false, contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

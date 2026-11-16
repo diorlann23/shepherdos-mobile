@@ -15,6 +15,8 @@ import { syncNow } from '@/lib/sync';
 import { useSyncStatus } from '@/hooks/use-sync-status';
 import { usePushState } from '@/hooks/use-push-state';
 import { registerForPush } from '@/lib/push';
+import { useUpdates } from 'expo-updates';
+import { restartToUpdate } from '@/lib/app-updates';
 import { space, useTheme } from '@/theme';
 
 /** Everything for the week's work, shown only where the church has the feature and the role allows it. */
@@ -61,6 +63,7 @@ export function More() {
   const lock = useLock();
   const sync = useSyncStatus();
   const push = usePushState();
+  const { isUpdatePending } = useUpdates();
   const { colors } = useTheme();
   const sub = me?.org?.subscription;
   const others = (me?.orgs ?? []).filter((o) => o.id !== me?.org?.id);
@@ -103,6 +106,12 @@ export function More() {
             ) : null}
           </View>
         </Card>
+
+        {isUpdatePending ? (
+          <Card style={styles.list}>
+            <Row icon="arrow-up-circle-outline" title="Restart to update" subtitle="A new version of ShepherdOS is ready. Nothing waiting to sync is lost." onPress={() => void restartToUpdate()} />
+          </Card>
+        ) : null}
 
         <MinistryLinks />
 

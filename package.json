@@ -21,6 +21,7 @@
     "expo-sqlite": "~58.0.17",
     "expo-status-bar": "~58.0.5",
     "expo-system-ui": "~58.0.7",
+    "expo-updates": "~58.0.22",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
@@ -43,7 +44,9 @@
     "build:android": "npx eas-cli@latest build --profile preview --platform android",
     "build:ios": "npx eas-cli@latest build --profile preview --platform ios",
     "build:testflight": "npx eas-cli@latest build --profile production --platform ios --auto-submit",
-    "build:dev": "npx eas-cli@latest build --profile development"
+    "build:dev": "npx eas-cli@latest build --profile development",
+    "update:preview": "npx eas-cli@latest update --channel preview --environment preview",
+    "update:production": "npx eas-cli@latest update --channel production --environment production"
   },
   "private": true,
   "engines": {
