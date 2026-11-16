@@ -53,6 +53,8 @@ export interface Indexed {
 type Indexer = (row: Record<string, unknown>) => Indexed;
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
+/** A sort key that puts later dates first. */
+const newestFirst = (date: unknown) => String(9_999_999_999_999 - new Date(str(date) || 0).getTime()).padStart(13, '0');
 /** What each collection is searched and sorted by. */
 export const INDEXERS: Record<CollectionName, Indexer> = {
   members: (m) => ({
@@ -82,6 +84,13 @@ export const INDEXERS: Record<CollectionName, Indexer> = {
     status: str(r.householdId) || null,
   }),
   serviceTypes: (t) => ({ search: str(t.name).toLowerCase(), sort: str(t.name).toLowerCase(), status: t.isActive === false ? 'inactive' : 'active' }),
+  funds: (f) => ({ search: str(f.name).toLowerCase(), sort: str(f.name).toLowerCase(), status: f.isActive === false ? 'inactive' : 'active' }),
+  // Newest first, like services.
+  batches: (b) => ({ search: [b.title, b.nodeName].map(str).join(' ').toLowerCase(), sort: newestFirst(b.date), status: str(b.status) || null }),
+  // Grouped by counting sheet (status holds the sheet id), in the order they were entered.
+  entries: (e) => ({ search: [e.giver, e.fund, e.reference].map(str).join(' ').toLowerCase(), sort: str(e.createdAt) || str(e.updatedAt), status: str(e.batchId) || null }),
+  expenses: (e) => ({ search: [e.title, e.payee, e.category, e.nodeName, e.requestedBy].map(str).join(' ').toLowerCase(), sort: newestFirst(e.date), status: str(e.status) || null }),
+  budgets: (b) => ({ search: [b.name, b.nodeName].map(str).join(' ').toLowerCase(), sort: newestFirst(b.startDate), status: str(b.status) || null }),
 };
 
 export async function upsertRecords(collection: CollectionName, rows: Record<string, unknown>[]) {

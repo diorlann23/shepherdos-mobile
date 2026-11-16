@@ -4,7 +4,7 @@ import Constants from 'expo-constants';
 export const DEFAULT_SERVER: string = (Constants.expoConfig?.extra?.defaultServer as string | undefined) ?? 'https://shepherdoss.vercel.app';
 
 /** Collections the app keeps on the phone, in the order they are pulled. */
-export const SYNC_COLLECTIONS = ['members', 'households', 'serviceTypes', 'services', 'roster', 'checkins'] as const;
+export const SYNC_COLLECTIONS = ['members', 'households', 'serviceTypes', 'services', 'roster', 'checkins', 'funds', 'batches', 'entries', 'expenses', 'budgets'] as const;
 export type CollectionName = (typeof SYNC_COLLECTIONS)[number];
 
 /** How often to sync while the app is open and online. */

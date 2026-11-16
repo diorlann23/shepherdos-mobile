@@ -21,6 +21,11 @@ export default function AppLayout() {
       <Stack.Screen name="service/[id]/headcount" options={{ title: 'Headcount', presentation: 'modal' }} />
       <Stack.Screen name="service/[id]/visitor" options={{ title: 'First-timer', presentation: 'modal' }} />
       <Stack.Screen name="service/[id]/scan" options={{ title: 'Scan cards', headerStyle: { backgroundColor: '#000' }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="sheet/[id]/index" options={{ title: 'Counting sheet', headerBackTitle: 'Finance' }} />
+      <Stack.Screen name="sheet/new" options={{ title: 'New counting sheet', presentation: 'modal' }} />
+      <Stack.Screen name="sheet/[id]/entry" options={{ title: 'Add entry', presentation: 'modal' }} />
+      <Stack.Screen name="expense/[id]" options={{ title: 'Expense', headerBackTitle: 'Finance' }} />
+      <Stack.Screen name="expense/new" options={{ title: 'Request an expense', presentation: 'modal' }} />
       <Stack.Screen name="outbox" options={{ title: 'Waiting to sync' }} />
     </Stack>
   );

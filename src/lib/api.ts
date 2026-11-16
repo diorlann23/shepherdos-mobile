@@ -30,8 +30,8 @@ export function onAuthProblem(listener: Listener) {
 
 const TIMEOUT_MS = 20_000;
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
-  const headers: Record<string, string> = { accept: 'application/json', 'x-shepherdos-client': 'mobile' };
+export async function api<T>(path: string, init: { method?: string; body?: unknown; signal?: AbortSignal; headers?: Record<string, string> } = {}): Promise<T> {
+  const headers: Record<string, string> = { accept: 'application/json', 'x-shepherdos-client': 'mobile', ...init.headers };
   const token = getToken();
   if (token) headers.authorization = `Session ${token}`;
   if (init.body !== undefined) headers['content-type'] = 'application/json';
