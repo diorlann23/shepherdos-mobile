@@ -18,6 +18,14 @@ export interface SyncStatus {
 let status: SyncStatus = { state: 'idle', lastSyncedAt: null, pending: 0, refused: 0, message: null };
 let running: Promise<void> | null = null;
 let again = false;
+/** Only while fully signed in to a church: a sync before the 2FA code is in would be refused. */
+let enabled = false;
+export function setSyncEnabled(on: boolean) {
+  const was = enabled;
+  enabled = on;
+  // The signed-in screens may have asked for a sync a moment before this was turned on.
+  if (on && !was) void syncNow();
+}
 
 export const getSyncStatus = () => status;
 export const onSyncStatus = (listener: () => void) => subscribe('sync', listener);
@@ -149,6 +157,7 @@ async function pull() {
 
 /** Push queued changes first (so the server has them), then pull what changed. Safe to call any time. */
 export function syncNow(): Promise<void> {
+  if (!enabled) return Promise.resolve();
   if (running) {
     again = true;
     return running;
