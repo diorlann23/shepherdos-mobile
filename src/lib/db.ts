@@ -9,37 +9,7 @@ import { emit } from './events';
  */
 let db: SQLite.SQLiteDatabase | null = null;
 
-const MIGRATIONS = [
-  `CREATE TABLE IF NOT EXISTS records (
-     collection TEXT NOT NULL,
-     id TEXT NOT NULL,
-     data TEXT NOT NULL,
-     search TEXT NOT NULL DEFAULT '',
-     sort TEXT NOT NULL DEFAULT '',
-     status TEXT,
-     updated_at TEXT,
-     PRIMARY KEY (collection, id)
-   );
-   CREATE INDEX IF NOT EXISTS records_sort ON records (collection, sort);
-   CREATE TABLE IF NOT EXISTS sync_state (collection TEXT PRIMARY KEY, cursor TEXT, synced_at TEXT);
-   CREATE TABLE IF NOT EXISTS outbox (
-     seq INTEGER PRIMARY KEY AUTOINCREMENT,
-     method TEXT NOT NULL,
-     path TEXT NOT NULL,
-     body TEXT,
-     collection TEXT,
-     local_id TEXT,
-     label TEXT NOT NULL,
-     created_at TEXT NOT NULL,
-     attempts INTEGER NOT NULL DEFAULT 0,
-     error TEXT
-   );
-   CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
-  // 2: why a change was refused (e.g. CONFLICT for a possible duplicate), and which record it changes.
-  `ALTER TABLE outbox ADD COLUMN error_code TEXT;
-   ALTER TABLE outbox ADD COLUMN record_id TEXT;
-   CREATE INDEX IF NOT EXISTS outbox_record ON outbox (collection, record_id);`,
-];
+import { MIGRATIONS } from './sql';
 
 export async function openDb() {
   if (db) return db;
@@ -94,6 +64,24 @@ export const INDEXERS: Record<CollectionName, Indexer> = {
     search: [h.name, h.headName, h.phone, h.address, h.branch].map(str).join(' ').toLowerCase(),
     sort: str(h.name).toLowerCase(),
   }),
+  // Newest first: the sort key counts down as dates go up.
+  services: (s) => ({
+    search: [s.title, s.nodeName].map(str).join(' ').toLowerCase(),
+    sort: String(9_999_999_999_999 - new Date(str(s.date)).getTime()).padStart(13, '0'),
+    status: str(s.status) || null,
+  }),
+  // Grouped by service (status holds the service id), newest first.
+  checkins: (c) => ({
+    search: '',
+    sort: String(9_999_999_999_999 - new Date(str(c.markedAt)).getTime()).padStart(13, '0'),
+    status: str(c.sessionId) || null,
+  }),
+  roster: (r) => ({
+    search: [r.name, r.memberNumber, r.phoneTail].map(str).join(' ').toLowerCase(),
+    sort: str(r.name).toLowerCase(),
+    status: str(r.householdId) || null,
+  }),
+  serviceTypes: (t) => ({ search: str(t.name).toLowerCase(), sort: str(t.name).toLowerCase(), status: t.isActive === false ? 'inactive' : 'active' }),
 };
 
 export async function upsertRecords(collection: CollectionName, rows: Record<string, unknown>[]) {
@@ -163,6 +151,12 @@ export async function listRecords<T>(collection: CollectionName, query: ListQuer
 }
 
 /** Members of one household, head first. */
+/** Records of one collection with this status column value (service id for check-ins, household for the roster). */
+export async function recordsWithStatus<T>(collection: CollectionName, status: string): Promise<T[]> {
+  const rows = await getDb().getAllAsync<{ data: string }>('SELECT data FROM records WHERE collection = ? AND status = ? ORDER BY sort', collection, status);
+  return rows.map((r) => JSON.parse(r.data) as T);
+}
+
 export async function membersOfHousehold<T>(householdId: string): Promise<T[]> {
   const rows = await getDb().getAllAsync<{ data: string }>(
     `SELECT data FROM records WHERE collection = 'members' AND json_extract(data, '$.householdId') = ?

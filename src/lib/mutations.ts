@@ -2,7 +2,7 @@ import * as Crypto from 'expo-crypto';
 import { getDb, getRecord, upsertRecords } from './db';
 import { emit } from './events';
 import { queueChange } from './sync';
-import { nodeName } from './permissions';
+import { can, nodeName } from './permissions';
 import type { HouseholdRow, Me, MemberRow } from './types';
 
 /**
@@ -55,6 +55,12 @@ export async function addMember(me: Me | null, input: MemberInput) {
   const id = localId();
   const row = rowFrom(me, { id, memberNumber: '', lastAttendedAt: null, householdRole: null, householdId: null, pending: true }, input);
   await upsertRecords('members', [row as unknown as Record<string, unknown>]);
+  // Ushers can check them in straight away, even before they reach the server.
+  if (can(me, 'attendance.create')) {
+    await upsertRecords('roster', [
+      { id, name: row.fullName, memberNumber: '', householdId: input.householdId ?? null, householdRole: input.householdRole ?? null, phoneTail: input.phone ? input.phone.replace(/\D/g, '').slice(-4) : null, nodeId: input.nodeId, status: input.status, pending: true },
+    ]);
+  }
   await queueChange({ method: 'POST', path: '/members', body: input, label: `Add ${row.fullName}`, collection: 'members', localId: id });
   return id;
 }
