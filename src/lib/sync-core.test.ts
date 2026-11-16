@@ -59,18 +59,18 @@ test('classifies server answers for queued changes', () => {
 test('sends in order, parks refused changes and stops when offline', async () => {
   const change = (seq: number): QueuedChange => ({ seq, method: 'POST', path: '/x', body: {}, localId: null, attempts: 0 });
   const log: string[] = [];
-  const answers: Record<number, { result: unknown } | { error: { offline?: boolean; status?: number; message: string } }> = {
+  const answers: Record<number, { result: unknown } | { error: { offline?: boolean; status?: number; code?: string; message: string } }> = {
     1: { result: { id: 'm1' } },
-    2: { error: { status: 422, message: 'Phone is not valid' } },
+    2: { error: { status: 409, code: 'CONFLICT', message: 'May already be in the register' } },
     3: { error: { offline: true, message: 'offline' } },
     4: { result: {} },
   };
   const out = await pushQueue([1, 2, 3, 4].map(change), {
     send: async (c) => answers[c.seq],
     done: async (c) => void log.push(`done ${c.seq}`),
-    refused: async (c, m) => void log.push(`refused ${c.seq}: ${m}`),
+    refused: async (c, m, code) => void log.push(`refused ${c.seq}: ${code} ${m}`),
     retryLater: async (c) => void log.push(`retry ${c.seq}`),
   });
-  assert.deepEqual(log, ['done 1', 'refused 2: Phone is not valid']);
+  assert.deepEqual(log, ['done 1', 'refused 2: CONFLICT May already be in the register']);
   assert.deepEqual(out, { sent: 1, stoppedBy: 'offline' });
 });

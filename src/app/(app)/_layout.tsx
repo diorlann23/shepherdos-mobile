@@ -10,7 +10,12 @@ export default function AppLayout() {
   return (
     <Stack screenOptions={{ headerTintColor: colors.primary, headerStyle: { backgroundColor: colors.background }, headerShadowVisible: false, contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="member/[id]" options={{ title: 'Member', headerBackTitle: 'Members' }} />
+      <Stack.Screen name="member/[id]/index" options={{ title: 'Member', headerBackTitle: 'Members' }} />
+      <Stack.Screen name="member/[id]/edit" options={{ title: 'Edit member', presentation: 'modal' }} />
+      <Stack.Screen name="member/new" options={{ title: 'New member', presentation: 'modal' }} />
+      <Stack.Screen name="household/[id]/index" options={{ title: 'Household', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="household/[id]/edit" options={{ title: 'Edit household', presentation: 'modal' }} />
+      <Stack.Screen name="household/new" options={{ title: 'New household', presentation: 'modal' }} />
       <Stack.Screen name="outbox" options={{ title: 'Waiting to sync' }} />
     </Stack>
   );

@@ -23,3 +23,24 @@ export const MEMBER_STATUSES: { value: string; label: string }[] = [
   { value: 'deceased', label: 'Deceased' },
 ];
 export const statusLabel = (v: string) => MEMBER_STATUSES.find((s) => s.value === v)?.label ?? v;
+
+export const GENDERS = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+];
+export const MARITAL_STATUSES = [
+  { value: 'single', label: 'Single' },
+  { value: 'married', label: 'Married' },
+  { value: 'engaged', label: 'Engaged' },
+  { value: 'separated', label: 'Separated' },
+  { value: 'divorced', label: 'Divorced' },
+  { value: 'widowed', label: 'Widowed' },
+];
+export const HOUSEHOLD_ROLES = [
+  { value: 'head', label: 'Household head' },
+  { value: 'spouse', label: 'Spouse' },
+  { value: 'child', label: 'Child' },
+  { value: 'dependent', label: 'Dependent' },
+  { value: 'other', label: 'Other' },
+];
+export const householdRoleLabel = (v: string | null | undefined) => HOUSEHOLD_ROLES.find((r) => r.value === v)?.label ?? 'Member';
