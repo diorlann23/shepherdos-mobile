@@ -27,7 +27,8 @@ SQLite for the phone database, memory for the keychain, and a fetch that can go
    member cards); without it that test is skipped.
 
 The server limits sign-ins to 10 per account every 15 minutes, so don't run them
-in a tight loop. Use a local or staging server, never production: the tests
+in a tight loop (on a local test database you can clear the `ratelimits`
+collection between runs). Use a local or staging server, never production: the tests
 create services, members and households.
 
 `npm install -D vitest` currently crashes inside npm ("Cannot read properties of

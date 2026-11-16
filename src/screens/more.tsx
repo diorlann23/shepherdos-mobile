@@ -2,7 +2,11 @@ import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
-import { Avatar, Card, Row, SectionTitle, Text } from '@/components/ui';
+import { Avatar, Badge, Card, Row, SectionTitle, Text } from '@/components/ui';
+import { can, groupsOf } from '@/lib/permissions';
+import { listRecords } from '@/lib/db';
+import { OPEN_TASK, type FollowUp, type Task } from '@/lib/ministry';
+import { useLocalQuery } from '@/hooks/use-local-query';
 import { useAuth } from '@/lib/auth';
 import { useLock } from '@/lib/lock';
 import { getServer } from '@/lib/secure';
@@ -11,7 +15,36 @@ import { syncNow } from '@/lib/sync';
 import { useSyncStatus } from '@/hooks/use-sync-status';
 import { space, useTheme } from '@/theme';
 
-const STATE_LABEL = { none: 'No subscription', active: 'Active', expiring: 'Renewal due', grace: 'Grace period', locked: 'Locked' } as const;
+/** Everything for the week's work, shown only where the church has the feature and the role allows it. */
+function MinistryLinks() {
+  const { me } = useAuth();
+  const mods = me?.org?.modules ?? [];
+  const open = useLocalQuery(async () => ({
+    tasks: (await listRecords<Task>('tasks', { limit: 1000 })).filter((t) => t.isMine && OPEN_TASK.includes(t.status) && t.status !== 'done').length,
+    firstTimers: (await listRecords<FollowUp>('followups', { limit: 2000 })).filter((f) => f.stage === 'new').length,
+  }), ['records:tasks', 'records:followups', 'records']);
+  const links = [
+    mods.includes('tasks') && { icon: 'checkbox-outline' as const, title: 'Tasks', badge: open.data?.tasks, href: '/tasks' as const },
+    mods.includes('events') && can(me, 'event.view') && { icon: 'calendar-outline' as const, title: 'Events', href: '/events' as const },
+    groupsOf(me).length > 0 && { icon: 'people-circle-outline' as const, title: 'Groups', href: '/groups' as const },
+    mods.includes('communication') && { icon: 'megaphone-outline' as const, title: 'Notices', href: '/notices' as const },
+    mods.includes('visitors') && can(me, 'followup.view') && { icon: 'person-add-outline' as const, title: 'First-timers', badge: open.data?.firstTimers, href: '/firsttimers' as const },
+    mods.includes('pastoral') && (can(me, 'prayer.view') || can(me, 'visit.view')) && { icon: 'heart-outline' as const, title: 'Prayer & visits', href: '/pastoral' as const },
+  ].filter(Boolean) as { icon: 'checkbox-outline'; title: string; badge?: number; href: string }[];
+  if (!links.length) return null;
+  return (
+    <>
+      <SectionTitle>Ministry</SectionTitle>
+      <Card style={styles.list}>
+        {links.map((l) => (
+          <Row key={l.title} icon={l.icon} title={l.title} onPress={() => router.push(l.href as never)} right={l.badge ? <Badge label={String(l.badge)} tone="primary" /> : undefined} />
+        ))}
+      </Card>
+    </>
+  );
+}
+
+const STATE_LABEL ={ none: 'No subscription', active: 'Active', expiring: 'Renewal due', grace: 'Grace period', locked: 'Locked' } as const;
 
 export function More() {
   const { me, signOut, chooseChurch } = useAuth();
@@ -59,6 +92,8 @@ export function More() {
             ) : null}
           </View>
         </Card>
+
+        <MinistryLinks />
 
         <SectionTitle>Church</SectionTitle>
         <Card style={styles.list}>

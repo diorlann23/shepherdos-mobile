@@ -69,7 +69,27 @@ Phase 4, giving and finance, is built:
 
 Also from testing: lists the server doesn't offer yet (an older website) are skipped instead of stopping the whole sync.
 
-Next phases add the rest of ShepherdOS: events, groups, tasks, announcements, pastoral care, scripture projection and reports.
+Phase 5, the week's ministry work, is built. Everything is reached from **More › Ministry** and the "This week" card on Home, and shows only where the church has the feature and the role allows it:
+
+- **Tasks:**
+  - For me / I assigned.
+  - Accept, start, mark done, verify, send back or cancel, with a note (the same moves the website allows; whoever did the work can't verify it).
+  - Assign a new task to anyone the person may assign to.
+- **Events:**
+  - Upcoming and recent events, with when, where (opens in Maps) and registrations.
+  - Register yourself, or (organisers) a member or guest with extra guests. A full event puts people on the waiting list.
+  - Organisers see who registered.
+- **Groups:** groups, cells and departments with their people. Leaders can take the group's attendance in one tap.
+- **Notices:** the church's announcements for everyone. Writers publish new ones, optionally by email too.
+- **First-timers:**
+  - The follow-up board (new, contacted, visited, attending).
+  - Call or WhatsApp, move to the next stage, add notes, assign to yourself, or close.
+- **Prayer & visits:**
+  - Add prayer requests and log pastoral visits offline.
+  - **The words of requests and visit notes are never stored on the phone.** The list keeps who, when and status. The words travel only in the outbox (deleted once delivered) and are read online, one record at a time, by the people allowed to.
+- **One request per sync:** all lists are asked for together (POST /sync), so syncing costs one request instead of one per list. Older servers are asked list by list.
+
+Next: scripture projection and reports (phase 6), then the app's own icon, push notifications and installable test builds.
 
 ## Running it
 

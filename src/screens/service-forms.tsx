@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Button, Card, Input, Text } from '@/components/ui';
 import { DateField, Segmented, SelectField } from '@/components/fields';
 import { useAuth } from '@/lib/auth';
@@ -22,12 +22,13 @@ const MODES = [
 /** Start a service: pick the kind (Sunday Service…), where, and the day. */
 export function NewServiceForm() {
   const { me } = useAuth();
+  const params = useLocalSearchParams<{ nodeId?: string; title?: string }>();
   const types = useLocalQuery(() => listRecords<ServiceType>('serviceTypes', { status: 'active', limit: 100 }), ['records:serviceTypes']);
   // Services can be held for a branch, a region, the whole church, or a group (a cell meeting).
   const places = useMemo(() => (me?.nodes ?? []).filter((n) => n.isActive && allowedAt(me, 'attendance.create', [n.id])).sort((a, b) => a.name.localeCompare(b.name)), [me]);
   const [typeId, setTypeId] = useState<string | null>(null);
-  const [title, setTitle] = useState('');
-  const [nodeId, setNodeId] = useState<string | null>(places.length === 1 ? places[0].id : null);
+  const [title, setTitle] = useState(params.title ?? '');
+  const [nodeId, setNodeId] = useState<string | null>(params.nodeId && places.some((p) => p.id === params.nodeId) ? params.nodeId : places.length === 1 ? places[0].id : null);
   const [date, setDate] = useState<string | null>(localDay());
   const [dateOk, setDateOk] = useState(true);
   const [mode, setMode] = useState<Service['mode']>('both');

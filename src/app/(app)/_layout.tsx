@@ -26,6 +26,22 @@ export default function AppLayout() {
       <Stack.Screen name="sheet/[id]/entry" options={{ title: 'Add entry', presentation: 'modal' }} />
       <Stack.Screen name="expense/[id]" options={{ title: 'Expense', headerBackTitle: 'Finance' }} />
       <Stack.Screen name="expense/new" options={{ title: 'Request an expense', presentation: 'modal' }} />
+      <Stack.Screen name="tasks/index" options={{ title: 'Tasks', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="tasks/[id]" options={{ title: 'Task' }} />
+      <Stack.Screen name="tasks/new" options={{ title: 'New task', presentation: 'modal' }} />
+      <Stack.Screen name="events/index" options={{ title: 'Events', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="events/[id]" options={{ title: 'Event' }} />
+      <Stack.Screen name="groups/index" options={{ title: 'Groups', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="groups/[id]" options={{ title: 'Group' }} />
+      <Stack.Screen name="notices/index" options={{ title: 'Notices', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="notices/[id]" options={{ title: 'Notice' }} />
+      <Stack.Screen name="notices/new" options={{ title: 'New notice', presentation: 'modal' }} />
+      <Stack.Screen name="firsttimers/index" options={{ title: 'First-timers', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="firsttimers/[id]" options={{ title: 'First-timer' }} />
+      <Stack.Screen name="pastoral/index" options={{ title: 'Prayer & visits', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="pastoral/prayer/[id]" options={{ title: 'Prayer request' }} />
+      <Stack.Screen name="pastoral/visit/[id]" options={{ title: 'Visit' }} />
+      <Stack.Screen name="pastoral/new" options={{ title: 'New', presentation: 'modal' }} />
       <Stack.Screen name="outbox" options={{ title: 'Waiting to sync' }} />
     </Stack>
   );
