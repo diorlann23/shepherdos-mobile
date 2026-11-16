@@ -46,6 +46,15 @@
         {
           "faceIDPermission": "Use Face ID to unlock ShepherdOS and keep your church\u2019s records private."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ShepherdOS uses the camera to scan members\u2019 QR cards when checking people in to a service.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
       ]
     ],
     "scheme": "shepherdos",

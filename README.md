@@ -29,7 +29,28 @@ Phase 2, members and households offline, is built:
 - When the server refuses a change, the record's page shows why, with Fix, Discard, or (for a possible duplicate) Add anyway.
 - Buttons appear only where the person's role allows. The server checks everything again.
 
-Next phases add the rest of ShepherdOS: attendance and check-in, giving and finance, events, groups, tasks, announcements, pastoral care, scripture projection and reports.
+Phase 3, attendance and check-in, is built:
+
+- **Attendance tab:** today's services and recent ones (last 60 days) with their counts. Shown to people who take or see attendance, in churches with the feature.
+- **Start a service:** pick its kind (Sunday Service…), where it's held (branch, region or group), the day, and whether to record names, a headcount or both.
+- **Check people in:**
+  - Search by name, member number or the last 4 phone digits, then tap to tick. Tap again to undo a mis-tap.
+  - A people button checks in a whole household.
+  - A **Here** list shows who's in, how and when.
+- **Scan member cards with the camera:**
+  - Online, the server checks each card, so forged or replaced cards are refused.
+  - Offline, the phone reads the member from the card and checks them in.
+- **First-timers at the door:** register and check in at once. They go on the follow-up list, as on the website.
+- **Headcount** (men, women, children, first-timers, online, with the total added up) and **close / reopen** a service.
+- **Fully offline, and never counted twice:**
+  - Check-ins save on the phone and go in batches a few seconds after the last tap.
+  - Each carries its own id, so retries and two ushers checking in the same person count once.
+  - Services started offline, and people added offline, are checked in straight away and their real ids follow when synced.
+- The check-in roster on the phone holds names, member numbers, households and the last 4 phone digits only, never full contact details. Its download is logged.
+
+Not built yet: USSD check-in (see the design in the ShepherdOS repo, `docs/`).
+
+Next phases add the rest of ShepherdOS: giving and finance, events, groups, tasks, announcements, pastoral care, scripture projection and reports.
 
 ## Running it
 

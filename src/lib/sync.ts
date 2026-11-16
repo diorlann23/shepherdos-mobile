@@ -5,6 +5,7 @@ import { api, ApiError, OfflineError } from './api';
 import { getCursor, getDb, getRecord, keepOnly, removeRecord, setCursor, upsertRecords } from './db';
 import { emit, subscribe } from './events';
 import { pullCollection, pushQueue, type QueuedChange } from './sync-core';
+import { DROP_SYNCED_PLACEHOLDERS, REPOINT, SENDABLE_MARKS } from './sql';
 
 export type SyncState = 'idle' | 'syncing' | 'offline' | 'error';
 
@@ -43,9 +44,26 @@ function setStatus(patch: Partial<SyncStatus>) {
 
 async function refreshCounts() {
   const row = await getDb().getFirstAsync<{ pending: number; refused: number }>(
-    'SELECT SUM(error IS NULL) AS pending, SUM(error IS NOT NULL) AS refused FROM outbox',
+    `SELECT
+       (SELECT COUNT(*) FROM outbox WHERE error IS NULL) + (SELECT COUNT(*) FROM marks WHERE error IS NULL) AS pending,
+       (SELECT COUNT(*) FROM outbox WHERE error IS NOT NULL) + (SELECT COUNT(*) FROM marks WHERE error IS NOT NULL) AS refused`,
   );
   setStatus({ pending: row?.pending ?? 0, refused: row?.refused ?? 0 });
+}
+
+/**
+ * Something was saved on the phone (e.g. a check-in): update the counts and
+ * send it soon. During a rush at the door, check-ins go together a few seconds
+ * after the last tap rather than one sync per tap.
+ */
+let soon: ReturnType<typeof setTimeout> | null = null;
+export async function changedLocally() {
+  await refreshCounts();
+  if (soon) clearTimeout(soon);
+  soon = setTimeout(() => {
+    soon = null;
+    void syncNow();
+  }, 3000);
 }
 
 // ---- Outbox: changes made offline ------------------------------------------------
@@ -183,10 +201,7 @@ async function push() {
         const local = await getRecord<Record<string, unknown>>(collection, c.localId);
         await removeRecord(collection, c.localId);
         await upsertRecords(collection, [{ ...(local ?? {}), ...(result as Record<string, unknown>), id: real, pending: false }]);
-        const like = `%${c.localId}%`;
-        await getDb().runAsync('UPDATE outbox SET path = REPLACE(path, ?, ?), body = REPLACE(body, ?, ?), record_id = REPLACE(record_id, ?, ?) WHERE path LIKE ? OR body LIKE ? OR record_id LIKE ?', c.localId, real, c.localId, real, c.localId, real, like, like, like);
-        await getDb().runAsync('UPDATE records SET data = REPLACE(data, ?, ?) WHERE data LIKE ?', c.localId, real, like);
-        emit('records');
+        await repoint(c.localId, real);
       }
       // Edits: the pull that follows brings the server's version.
     },
@@ -200,6 +215,59 @@ async function push() {
   emit('outbox');
   await refreshCounts();
   return result;
+}
+
+/**
+ * A record made on this phone now has its server id: everything that pointed at
+ * the phone's id follows (waiting changes, waiting check-ins, copies in other
+ * collections such as the check-in roster, and references inside records).
+ */
+async function repoint(localId: string, real: string) {
+  for (const step of REPOINT) await getDb().runAsync(step.sql, ...step.args(localId, real));
+  emit('records');
+}
+
+// ---- Check-ins: sent in batches --------------------------------------------------
+const MARK_BATCH = 500;
+
+/**
+ * Sends check-ins taken on this phone. Each carries its own id, so sending one
+ * twice (a retry after a dropped connection) never counts anyone twice. Ones
+ * that still point at a service or person not on the server yet wait their turn.
+ */
+async function pushMarks(): Promise<'done' | 'offline'> {
+  const d = getDb();
+  for (;;) {
+    const rows = await d.getAllAsync<{ client_id: string; session_id: string; member_id: string; method: string; marked_at: string }>(SENDABLE_MARKS, MARK_BATCH);
+    if (!rows.length) return 'done';
+    let res: { results: { clientId: string; status: 'ok' | 'rejected'; reason?: string }[] };
+    try {
+      res = await api('/attendance/sync', {
+        method: 'POST',
+        body: { marks: rows.map((r) => ({ clientId: r.client_id, sessionId: r.session_id, memberId: r.member_id, method: r.method, markedAt: r.marked_at })) },
+      });
+    } catch (e) {
+      if (e instanceof OfflineError) return 'offline';
+      if (e instanceof ApiError && (e.status === 429 || e.status >= 500)) return 'done';
+      // The whole batch was refused (e.g. permission removed): keep the reason on each.
+      const reason = e instanceof Error ? e.message : 'Not accepted';
+      for (const r of rows) await d.runAsync('UPDATE marks SET error = ? WHERE client_id = ?', reason, r.client_id);
+      break;
+    }
+    for (const r of res.results) {
+      if (r.status === 'ok') await d.runAsync('DELETE FROM marks WHERE client_id = ?', r.clientId);
+      else await d.runAsync('UPDATE marks SET error = ? WHERE client_id = ?', r.reason ?? 'Not accepted', r.clientId);
+    }
+    if (rows.length < MARK_BATCH) break;
+  }
+  emit('marks');
+  return 'done';
+}
+
+/** Once the server's own copy of a check-in has arrived, the phone's placeholder goes. */
+async function dropSyncedPlaceholders() {
+  await getDb().runAsync(DROP_SYNCED_PLACEHOLDERS);
+  emit('records:checkins');
 }
 
 async function pull() {
@@ -240,7 +308,10 @@ export function syncNow(): Promise<void> {
       await refreshCounts();
       const pushed = await push();
       if (pushed.stoppedBy === 'offline') throw new OfflineError();
+      if ((await pushMarks()) === 'offline') throw new OfflineError();
       await pull();
+      await dropSyncedPlaceholders();
+      await refreshCounts();
       setStatus({ state: 'idle', lastSyncedAt: new Date().toISOString(), message: null });
     } catch (e) {
       if (e instanceof OfflineError) setStatus({ state: 'offline', message: null });
