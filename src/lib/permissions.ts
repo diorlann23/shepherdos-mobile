@@ -1,10 +1,11 @@
 import type { Me, OrgNode } from './types';
+import { holds } from './permission-match';
 
 /**
  * What the signed-in person may do, from their profile. The server checks
  * every change again; this only decides which buttons to show.
  */
-export const can = (me: Me | null, permission: string) => !!me?.permissions.includes(permission);
+export const can = (me: Me | null, permission: string) => !!me && (!!me.scopes[permission] || holds(me.permissions, permission));
 
 /** Allowed at this place (or one of these places)? */
 export function allowedAt(me: Me | null, permission: string, nodeIds: (string | null | undefined)[]) {
