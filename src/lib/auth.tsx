@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { api, ApiError, OfflineError, onAuthProblem } from './api';
 import { clearChurchData, kvGet, kvSet } from './db';
 import { getToken, setServer, setToken } from './secure';
-import { resetSyncStatus, syncNow } from './sync';
+import { resetSyncStatus, setSyncEnabled, syncNow } from './sync';
 import type { Me } from './types';
 
 /**
@@ -87,11 +87,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refresh]);
 
+  // Sync only once fully signed in to an open church (after 2FA, church chosen).
+  useEffect(() => {
+    setSyncEnabled(state === 'ready');
+  }, [state]);
+
   // Signed out elsewhere, session expired, church locked: follow the server.
   useEffect(
     () =>
       onAuthProblem((error) => {
-        if (error.status === 401) void forget();
+        // Still waiting for the 2FA code is not signed out: show the code screen.
+        if (error.code === 'MFA_REQUIRED') void refresh();
+        else if (error.status === 401) void forget();
         else void refresh();
       }),
     [forget, refresh],
@@ -108,13 +115,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await setToken(null);
         await clearChurchData();
         await api<{ mfaRequired: boolean; hasOrganization: boolean }>('/auth/login', { method: 'POST', body: { email, password } });
+        // No sync here: with 2FA on, the session can't read church data until the code is entered.
+        // The signed-in screens start syncing as soon as they open.
         await refresh();
-        void syncNow();
       },
       async verifyTwoFactor(code) {
         await api('/auth/two-factor', { method: 'POST', body: { code } });
         await refresh();
-        void syncNow();
       },
       async chooseChurch(orgId) {
         await api('/auth/switch-org', { method: 'POST', body: { orgId } });
