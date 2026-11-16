@@ -42,6 +42,12 @@ export default function AppLayout() {
       <Stack.Screen name="pastoral/prayer/[id]" options={{ title: 'Prayer request' }} />
       <Stack.Screen name="pastoral/visit/[id]" options={{ title: 'Visit' }} />
       <Stack.Screen name="pastoral/new" options={{ title: 'New', presentation: 'modal' }} />
+      <Stack.Screen name="reports/index" options={{ title: 'Reports', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="reports/run/[key]" options={{ title: 'Report' }} />
+      <Stack.Screen name="reports/saved/[index]" options={{ title: 'Report' }} />
+      <Stack.Screen name="reports/branch/index" options={{ title: 'Branch reports' }} />
+      <Stack.Screen name="reports/branch/[id]" options={{ title: 'Branch report' }} />
+      <Stack.Screen name="reports/branch/new" options={{ title: 'Start a branch report', presentation: 'modal' }} />
       <Stack.Screen name="outbox" options={{ title: 'Waiting to sync' }} />
     </Stack>
   );

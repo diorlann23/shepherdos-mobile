@@ -30,6 +30,7 @@ function MinistryLinks() {
     mods.includes('communication') && { icon: 'megaphone-outline' as const, title: 'Notices', href: '/notices' as const },
     mods.includes('visitors') && can(me, 'followup.view') && { icon: 'person-add-outline' as const, title: 'First-timers', badge: open.data?.firstTimers, href: '/firsttimers' as const },
     mods.includes('pastoral') && (can(me, 'prayer.view') || can(me, 'visit.view')) && { icon: 'heart-outline' as const, title: 'Prayer & visits', href: '/pastoral' as const },
+    (can(me, 'report.view') || (mods.includes('workflows') && (can(me, 'report.create') || can(me, 'report.approve')))) && { icon: 'stats-chart-outline' as const, title: 'Reports', href: '/reports' as const },
   ].filter(Boolean) as { icon: 'checkbox-outline'; title: string; badge?: number; href: string }[];
   if (!links.length) return null;
   return (

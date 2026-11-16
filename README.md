@@ -89,7 +89,19 @@ Phase 5, the week's ministry work, is built. Everything is reached from **More �
   - **The words of requests and visit notes are never stored on the phone.** The list keeps who, when and status. The words travel only in the outbox (deleted once delivered) and are read online, one record at a time, by the people allowed to.
 - **One request per sync:** all lists are asked for together (POST /sync), so syncing costs one request instead of one per list. Older servers are asked list by list.
 
-Next: scripture projection and reports (phase 6), then the app's own icon, push notifications and installable test builds.
+Phase 6, reports, is built (scripture projection stays on the website and isn't part of the app):
+
+- **Reports** (More › Ministry › Reports), for roles that can see reports.
+  - Every built-in report the person may run, grouped by area. Each has the website's filters (dates, branch or region, options).
+  - Results show the summary figures, a chart (horizontal bars, made for a phone screen) and the table.
+  - Reports are worked out on the server, so running one needs a connection. The last 30 results are kept on the phone and open offline ("Kept on this phone").
+  - **Share as PDF, Excel or CSV** through the phone's share sheet (WhatsApp, email, Drive…), for roles allowed to export. The file is made by the website, with the church's letterhead on PDFs.
+- **Branch reports** (the forms each level submits upwards):
+  - To fill in, to review, and recent ones.
+  - Starting one needs a connection (the server fills it in from the church's figures for the period). Answering, saving and submitting then work offline.
+  - Reviewers at the level above approve, mark reviewed or return with a note. The submitter can't review their own report; the server enforces it.
+
+Next: the app's own icon, push notifications and installable test builds.
 
 ## Running it
 

@@ -30,6 +30,7 @@ export async function phone(name: string, email: string, password: string) {
     attendance: await import('@/lib/attendance'),
     finance: await import('@/lib/finance'),
     ministry: await import('@/lib/ministry'),
+    reports: await import('@/lib/reports'),
     mutations: await import('@/lib/mutations'),
     /** Switches the shared keychain to this phone and syncs (push, then pull). */
     async syncNow() {
