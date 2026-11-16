@@ -100,6 +100,9 @@ export const INDEXERS: Record<CollectionName, Indexer> = {
   announcements: (a) => ({ search: [a.title, a.body, a.nodeName].map(str).join(' ').toLowerCase(), sort: newestFirst(a.publishAt), status: str(a.status) || null }),
   followups: (f) => ({ search: [f.name, f.phone, f.area, f.branch].map(str).join(' ').toLowerCase(), sort: newestFirst(f.firstVisitDate), status: str(f.stage) || null }),
   prayer: (p) => ({ search: [(p._labels as Record<string, string> | undefined)?.[str(p.member)], p.requesterName, p.status].map(str).join(' ').toLowerCase(), sort: newestFirst(p.createdAt), status: str(p.status) || null }),
+  reportTemplates: (t) => ({ search: str(t.name).toLowerCase(), sort: str(t.name).toLowerCase() }),
+  // Latest period first.
+  submissions: (s) => ({ search: [s.template, s.nodeName, s.period].map(str).join(' ').toLowerCase(), sort: `${String(99999999 - Number(str(s.period).replace(/\D/g, '').padEnd(8, '0'))).padStart(8, '0')}${str(s.nodeName).toLowerCase()}`, status: str(s.status) || null }),
   visits: (v) => ({ search: [(v._labels as Record<string, string> | undefined)?.[str(v.member)], v.type, v.visitedBy].map(str).join(' ').toLowerCase(), sort: newestFirst(v.date || v.createdAt), status: str(v.type) || null }),
 };
 

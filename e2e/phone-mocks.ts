@@ -58,6 +58,39 @@ vi.mock('expo-secure-store', () => {
   };
 });
 
+// Files the app saves (report exports) go to a temporary folder; "sharing" records what would have been shared.
+vi.mock('expo-file-system', async () => {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shepherdos-phone-'));
+  class File {
+    uri: string;
+    constructor(_parent: unknown, name: string) {
+      this.uri = path.join(dir, name);
+    }
+    get exists() {
+      return fs.existsSync(this.uri);
+    }
+    create() {
+      fs.writeFileSync(this.uri, '');
+    }
+    delete() {
+      fs.rmSync(this.uri, { force: true });
+    }
+    async write(content: Uint8Array | string) {
+      fs.writeFileSync(this.uri, content);
+    }
+  }
+  return { File, Paths: { cache: dir, document: dir } };
+});
+vi.mock('expo-sharing', () => ({
+  isAvailableAsync: async () => true,
+  shareAsync: async (uri: string, options?: { mimeType?: string }) => {
+    ((globalThis as { __shared?: { uri: string; mimeType?: string }[] }).__shared ??= []).push({ uri, mimeType: options?.mimeType });
+  },
+}));
+
 vi.mock('react-native', () => ({ AppState: { currentState: 'background', addEventListener: () => ({ remove() {} }) }, Platform: { OS: 'ios' } }));
 vi.mock('@react-native-community/netinfo', () => ({ default: { addEventListener: () => () => {} } }));
 vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
