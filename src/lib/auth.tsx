@@ -3,6 +3,7 @@ import { api, ApiError, OfflineError, onAuthProblem } from './api';
 import { clearChurchData, kvGet, kvSet } from './db';
 import { getToken, setServer, setToken } from './secure';
 import { resetSyncStatus, setSyncEnabled, syncNow } from './sync';
+import { unregisterPush } from './push';
 import type { Me } from './types';
 
 /**
@@ -131,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void syncNow();
       },
       async signOut() {
+        await unregisterPush();
         await api('/auth/logout', { method: 'POST', body: {} }).catch(() => undefined);
         await forget();
       },

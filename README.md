@@ -101,7 +101,19 @@ Phase 6, reports, is built (scripture projection stays on the website and isn't 
   - Starting one needs a connection (the server fills it in from the church's figures for the period). Answering, saving and submitting then work offline.
   - Reviewers at the level above approve, mark reviewed or return with a note. The submitter can't review their own report; the server enforces it.
 
-Next: the app's own icon, push notifications and installable test builds.
+### App icon, notifications and test builds
+
+- **Icon and splash screen**: the ShepherdOS emblem (crook, house, cross, lamb and open Bible) from the website, on white. Android gets an adaptive icon (with a one-colour version for themed icons) and a notification icon. In dark mode the splash shows the emblem on its own white tile, as on the website.
+- **Push notifications**: the same alerts as the bell on the website, on the phone's lock screen:
+  - an expense waiting for approval, and the decision on yours;
+  - a new task, or one due soon;
+  - a first-timer assigned to you;
+  - a branch report returned for changes, or approved;
+  - a counting sheet ready for a second person to verify (new: the website now sends this too).
+  - Tapping one opens that task, expense, counting sheet, event or report in the app.
+  - The phone gets only the notifications of the church it's signed in to. Signing out (here or with "sign out everywhere" on the website) stops them.
+  - **More → Notifications** shows whether they're on, and opens the phone's settings if they were turned off.
+- **Installable test builds** with EAS. See [Test builds](#test-builds) below.
 
 ## Running it
 
@@ -126,12 +138,57 @@ npx expo export --platform android --platform ios   # makes sure both apps bundl
 
 The phone simulator (`e2e/`) runs the app's real sync code against a running ShepherdOS server, with the network switched off and on. See `e2e/README.md`.
 
-## Building for the stores
+## Test builds
 
-Builds use EAS (Expo's build service). No Xcode or Android Studio is needed.
+Builds use EAS (Expo's build service, free plan is enough for test builds). No Xcode or Android Studio is needed. Builds run in Expo's cloud and take 10–20 minutes.
+
+**Once, on your computer:**
 
 ```bash
-npx eas-cli@latest build --profile preview --platform android    # an APK to install directly
+npm run eas:login     # sign in with your Expo account
+npm run eas:init      # links this app to an Expo project; adds its projectId to app.json (commit that change)
+```
+
+**Android: an APK you install directly**
+
+```bash
+npm run build:android
+```
+
+When it finishes, EAS prints a link and a QR code. Open it on the Android phone, download the APK and install it (allow "install unknown apps" for your browser when asked). Send the same link to other testers.
+
+**iPhone: needs an Apple Developer account** ($99 a year, developer.apple.com)
+
+- TestFlight (easiest for testers):
+
+  ```bash
+  npm run build:testflight
+  ```
+
+  EAS asks you to sign in to Apple and creates the certificates for you. The build is sent to App Store Connect; add testers in TestFlight there.
+- Or a direct install on registered iPhones: `npx eas-cli@latest device:create` (each tester opens the link once), then `npm run build:ios`.
+
+### Turning on push notifications
+
+Push notifications only arrive in an installed build (the APK or TestFlight), not in Expo Go on Android. They need `npm run eas:init` first (the app finds its project id there), then:
+
+- **iPhone**: nothing extra. During the first iOS build, answer **Yes** when EAS asks to set up push notifications.
+- **Android** (pushes go through Google's Firebase):
+  1. At console.firebase.google.com, create a project and add an **Android app** with package name `com.shepherdos.app`.
+  2. Download its `google-services.json`. Upload it to EAS as a file variable (keeps it out of git):
+
+     ```bash
+     npx eas-cli@latest env:set --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --visibility secret --environment preview --environment production --environment development
+     ```
+
+  3. In Firebase: Project settings → Service accounts → **Generate new private key**. Then run `npx eas-cli@latest credentials`, choose Android → `com.shepherdos.app` → Google Service Account → **FCM V1**, and upload that key file.
+  4. Build again (`npm run build:android`).
+
+The website needs no setup to send them. If you later turn on "Enhanced push security" for the Expo project, add the access token as `EXPO_ACCESS_TOKEN` in the website's environment variables.
+
+### Store releases
+
+```bash
 npx eas-cli@latest build --profile production --platform all     # store builds
 npx eas-cli@latest submit --platform ios                         # send to App Store Connect / TestFlight
 ```

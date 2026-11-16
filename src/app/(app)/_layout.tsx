@@ -1,12 +1,20 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { startAutoSync } from '@/lib/sync';
+import { handlePushTaps, registerForPush } from '@/lib/push';
+import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/theme';
 
 export default function AppLayout() {
   const { colors } = useTheme();
   // Signed in to a church: keep its data on the phone fresh.
   useEffect(() => startAutoSync(), []);
+  // Notifications for this church on this phone; a tap opens the screen it's about.
+  const churchId = useAuth().me?.org?.id;
+  useEffect(() => {
+    if (churchId) void registerForPush();
+  }, [churchId]);
+  useEffect(() => handlePushTaps(), []);
   return (
     <Stack screenOptions={{ headerTintColor: colors.primary, headerStyle: { backgroundColor: colors.background }, headerShadowVisible: false, contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

@@ -1,4 +1,4 @@
-import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Linking, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
@@ -13,6 +13,8 @@ import { getServer } from '@/lib/secure';
 import { relativeTime, formatDate } from '@/lib/format';
 import { syncNow } from '@/lib/sync';
 import { useSyncStatus } from '@/hooks/use-sync-status';
+import { usePushState } from '@/hooks/use-push-state';
+import { registerForPush } from '@/lib/push';
 import { space, useTheme } from '@/theme';
 
 /** Everything for the week's work, shown only where the church has the feature and the role allows it. */
@@ -45,12 +47,20 @@ function MinistryLinks() {
   );
 }
 
-const STATE_LABEL ={ none: 'No subscription', active: 'Active', expiring: 'Renewal due', grace: 'Grace period', locked: 'Locked' } as const;
+const PUSH_LABEL = {
+  on: 'On: tasks, approvals, first-timers and reports',
+  denied: 'Turned off for ShepherdOS. Tap to open Settings',
+  unavailable: 'Not available in this version of the app',
+  'not-set-up': 'Not set up for this build yet',
+} as const;
+
+const STATE_LABEL = { none: 'No subscription', active: 'Active', expiring: 'Renewal due', grace: 'Grace period', locked: 'Locked' } as const;
 
 export function More() {
   const { me, signOut, chooseChurch } = useAuth();
   const lock = useLock();
   const sync = useSyncStatus();
+  const push = usePushState();
   const { colors } = useTheme();
   const sub = me?.org?.subscription;
   const others = (me?.orgs ?? []).filter((o) => o.id !== me?.org?.id);
@@ -136,6 +146,12 @@ export function More() {
                 accessibilityLabel="Lock with Face ID or fingerprint"
               />
             }
+          />
+          <Row
+            icon="notifications-outline"
+            title="Notifications"
+            subtitle={push ? PUSH_LABEL[push] : 'Checking…'}
+            onPress={push === 'denied' ? () => void Linking.openSettings() : push !== 'on' ? () => void registerForPush() : undefined}
           />
           <Row icon="log-out-outline" title="Sign out" danger onPress={confirmSignOut} />
         </Card>
