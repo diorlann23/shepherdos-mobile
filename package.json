@@ -13,6 +13,7 @@
     "expo-haptics": "~58.0.8",
     "expo-linking": "~58.0.17",
     "expo-local-authentication": "~58.0.3",
+    "expo-notifications": "~58.1.9",
     "expo-router": "~58.0.31",
     "expo-secure-store": "~58.0.3",
     "expo-sharing": "~58.0.23",
@@ -36,7 +37,13 @@
     "ios": "expo start --ios",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types src/lib/*.test.ts",
-    "doctor": "expo-doctor"
+    "doctor": "expo-doctor",
+    "eas:login": "npx eas-cli@latest login",
+    "eas:init": "npx eas-cli@latest init",
+    "build:android": "npx eas-cli@latest build --profile preview --platform android",
+    "build:ios": "npx eas-cli@latest build --profile preview --platform ios",
+    "build:testflight": "npx eas-cli@latest build --profile production --platform ios --auto-submit",
+    "build:dev": "npx eas-cli@latest build --profile development"
   },
   "private": true,
   "engines": {
