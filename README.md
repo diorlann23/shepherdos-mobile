@@ -50,7 +50,26 @@ Phase 3, attendance and check-in, is built:
 
 Not built yet: USSD check-in (see the design in the ShepherdOS repo, `docs/`).
 
-Next phases add the rest of ShepherdOS: giving and finance, events, groups, tasks, announcements, pastoral care, scripture projection and reports.
+Phase 4, giving and finance, is built:
+
+- **A Finance tab** for people who handle giving or expenses, or see budgets. It has Giving, Expenses and Budgets, and a prompt to turn on the Face ID / fingerprint lock, since giving records are on the phone.
+- **Giving:**
+  - This month's total and giving by fund (from the server when online, the last figures otherwise), and the counting sheets of the last 120 days.
+- **Counting sheets, offline:**
+  - Start a sheet (optionally for a service) and count the notes and coins.
+  - Add entries: a named giver from the register, or a loose offering, with fund, amount and how it was paid.
+  - Submit, verify, post, reopen or void. The phone warns when cash entries don't match the cash counted.
+  - The person who counted or started a sheet can't verify it, and posted sheets can't change. The server enforces both.
+- **Expenses:**
+  - Request one (send for approval or save as a draft).
+  - Approvers see "Waiting for you", with Approve / Reject and a note. Approve only shows within the person's limit, and never on their own request.
+- **Budgets:** each budget's spending against its total.
+- **Never recorded twice:** every queued change carries its own key (an Idempotency-Key). If the connection drops after the server saved something, the retry gets the first answer back instead of saving it again.
+- Amounts are kept in whole pesewas or cents, as on the website, so sums never drift.
+
+Also from testing: lists the server doesn't offer yet (an older website) are skipped instead of stopping the whole sync.
+
+Next phases add the rest of ShepherdOS: events, groups, tasks, announcements, pastoral care, scripture projection and reports.
 
 ## Running it
 
@@ -69,9 +88,11 @@ The server must include the mobile sign-in and `/api/v1/sync` endpoints (Shepher
 
 ```bash
 npm run typecheck   # TypeScript
-npm test            # sync engine unit tests
+npm test            # unit tests: sync rules, the phone database, money, cards, validation
 npx expo export --platform android --platform ios   # makes sure both apps bundle
 ```
+
+The phone simulator (`e2e/`) runs the app's real sync code against a running ShepherdOS server, with the network switched off and on. See `e2e/README.md`.
 
 ## Building for the stores
 

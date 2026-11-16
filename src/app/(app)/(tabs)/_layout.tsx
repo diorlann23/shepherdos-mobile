@@ -9,6 +9,11 @@ export default function TabsLayout() {
   const { me } = useAuth();
   // Attendance shows for churches with the feature, to people who take or see attendance.
   const attendance = !!me?.org?.modules.includes('attendance') && (can(me, 'attendance.create') || can(me, 'attendance.view'));
+  // Finance shows to people who handle giving or expenses, or see budgets.
+  const mods = me?.org?.modules ?? [];
+  const finance =
+    (mods.includes('giving') && ['view', 'create', 'verify', 'post', 'summary'].some((a) => can(me, `giving.${a}`))) ||
+    (mods.includes('finance') && (['view', 'create', 'approve'].some((a) => can(me, `expense.${a}`)) || can(me, 'budget.view')));
   return (
     <Tabs
       screenOptions={{
@@ -23,6 +28,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="attendance"
         options={{ title: 'Attendance', href: attendance ? undefined : null, tabBarIcon: ({ color, size }) => <Ionicons name="checkmark-done-circle-outline" color={color as string} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="finance"
+        options={{ title: 'Finance', href: finance ? undefined : null, tabBarIcon: ({ color, size }) => <Ionicons name="wallet-outline" color={color as string} size={size} /> }}
       />
       <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: ({ color, size }) => <Ionicons name="ellipsis-horizontal-circle-outline" color={color as string} size={size} /> }} />
     </Tabs>

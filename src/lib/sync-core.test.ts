@@ -72,5 +72,18 @@ test('sends in order, parks refused changes and stops when offline', async () =>
     retryLater: async (c) => void log.push(`retry ${c.seq}`),
   });
   assert.deepEqual(log, ['done 1', 'refused 2: CONFLICT May already be in the register']);
-  assert.deepEqual(out, { sent: 1, stoppedBy: 'offline' });
+  assert.deepEqual(out, { sent: 1, waiting: 0, stoppedBy: 'offline' });
+});
+
+test('holds back a change that is not sendable yet, and carries on with the rest', async () => {
+  const change = (seq: number): QueuedChange => ({ seq, method: 'PATCH', path: `/x/${seq}`, body: {}, localId: null, attempts: 0 });
+  const log: string[] = [];
+  const out = await pushQueue([1, 2, 3].map(change), {
+    send: async (c) => (c.seq === 2 ? { wait: true as const } : { result: {} }),
+    done: async (c) => void log.push(`done ${c.seq}`),
+    refused: async () => void log.push('refused'),
+    retryLater: async () => void log.push('retry'),
+  });
+  assert.deepEqual(log, ['done 1', 'done 3']);
+  assert.deepEqual(out, { sent: 2, waiting: 1, stoppedBy: null });
 });

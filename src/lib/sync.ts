@@ -1,5 +1,6 @@
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
+import * as Crypto from 'expo-crypto';
 import { SYNC_COLLECTIONS, SYNC_INTERVAL_MS, type CollectionName } from '@/constants';
 import { api, ApiError, OfflineError } from './api';
 import { getCursor, getDb, getRecord, keepOnly, removeRecord, setCursor, upsertRecords } from './db';
@@ -82,7 +83,7 @@ export interface QueueInput {
 
 export async function queueChange(change: QueueInput) {
   await getDb().runAsync(
-    'INSERT INTO outbox (method, path, body, collection, local_id, record_id, label, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO outbox (method, path, body, collection, local_id, record_id, label, created_at, idem) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     change.method,
     change.path,
     change.body === undefined ? null : JSON.stringify(change.body),
@@ -91,6 +92,7 @@ export async function queueChange(change: QueueInput) {
     change.recordId ?? change.localId ?? null,
     change.label,
     new Date().toISOString(),
+    Crypto.randomUUID(),
   );
   emit('outbox');
   await refreshCounts();
@@ -156,7 +158,7 @@ export async function retryChange(seq: number, options: { force?: boolean } = {}
   if (options.force) {
     const row = await getDb().getFirstAsync<{ body: string | null }>('SELECT body FROM outbox WHERE seq = ?', seq);
     const body = row?.body ? JSON.parse(row.body) : {};
-    await getDb().runAsync('UPDATE outbox SET body = ? WHERE seq = ?', JSON.stringify({ ...body, force: true }), seq);
+    await getDb().runAsync('UPDATE outbox SET body = ?, idem = ? WHERE seq = ?', JSON.stringify({ ...body, force: true }), Crypto.randomUUID(), seq);
   }
   await getDb().runAsync('UPDATE outbox SET error = NULL, error_code = NULL WHERE seq = ?', seq);
   emit('outbox');
@@ -183,9 +185,21 @@ async function push() {
   const queue: QueuedChange[] = rows.map((r) => ({ seq: r.seq, method: r.method, path: r.path, body: r.body ? JSON.parse(r.body) : undefined, localId: r.local_id, attempts: r.attempts }));
   const result = await pushQueue(queue, {
     send: async (c) => {
+      // Read the change again just before sending: a change sent earlier in this same run
+      // may have just given a record its real id, and this one must use it.
+      const fresh = await getDb().getFirstAsync<{ path: string; body: string | null; idem: string | null }>('SELECT path, body, idem FROM outbox WHERE seq = ?', c.seq);
+      if (!fresh) return { wait: true };
+      // Still pointing at something only on this phone (its own "add" was refused or hasn't gone): hold it.
+      if (fresh.path.includes('local_') || fresh.body?.includes('local_')) return { wait: true };
       try {
-        // Later changes to a record created offline must point at its real id once it has one.
-        return { result: await api(c.path, { method: c.method, body: c.body }) };
+        return {
+          result: await api(fresh.path, {
+            method: c.method,
+            body: fresh.body ? JSON.parse(fresh.body) : undefined,
+            // The same key on every retry: if the server already made this change, it answers again instead of making it twice.
+            headers: fresh.idem ? { 'idempotency-key': fresh.idem } : undefined,
+          }),
+        };
       } catch (e) {
         if (e instanceof OfflineError) return { error: { offline: true, message: e.message } };
         if (e instanceof ApiError) return { error: { status: e.status, code: e.code, message: describe(e) } };
@@ -290,6 +304,8 @@ async function pull() {
     }).catch((e) => {
       // A feature the church doesn't have, or the person can't see: skip it, keep going.
       if (e instanceof ApiError && e.status === 403) return 0;
+      // A list this server doesn't offer yet (the app is newer than the website): skip it too.
+      if (e instanceof ApiError && (e.status === 404 || (e.status === 422 && e.code === 'VALIDATION_ERROR'))) return 0;
       throw e;
     });
   }
@@ -306,7 +322,9 @@ export function syncNow(): Promise<void> {
     setStatus({ state: 'syncing', message: null });
     try {
       await refreshCounts();
-      const pushed = await push();
+      let pushed = await push();
+      // Something was held for an id that this run has since received: send it now, not next time.
+      for (let i = 0; i < 5 && !pushed.stoppedBy && pushed.waiting && pushed.sent; i++) pushed = await push();
       if (pushed.stoppedBy === 'offline') throw new OfflineError();
       if ((await pushMarks()) === 'offline') throw new OfflineError();
       await pull();

@@ -74,17 +74,23 @@ export interface PushError {
 }
 
 export interface PushAdapter {
-  send(change: QueuedChange): Promise<{ result: unknown } | { error: PushError }>;
+  /** `wait`: not sendable yet (it depends on something the server doesn't have); try again next sync. */
+  send(change: QueuedChange): Promise<{ result: unknown } | { error: PushError } | { wait: true }>;
   done(change: QueuedChange, result: unknown): Promise<void>;
   refused(change: QueuedChange, message: string, code: string | null): Promise<void>;
   retryLater(change: QueuedChange, message: string): Promise<void>;
 }
 
 /** Sends queued changes in order. Returns what stopped it, if anything. */
-export async function pushQueue(queue: QueuedChange[], adapter: PushAdapter): Promise<{ sent: number; stoppedBy: PushOutcome | null }> {
+export async function pushQueue(queue: QueuedChange[], adapter: PushAdapter): Promise<{ sent: number; waiting: number; stoppedBy: PushOutcome | null }> {
   let sent = 0;
+  let waiting = 0;
   for (const change of queue) {
     const res = await adapter.send(change);
+    if ('wait' in res) {
+      waiting++;
+      continue;
+    }
     const outcome = classifyPush('error' in res ? res.error : null);
     if (outcome === 'sent') {
       await adapter.done(change, (res as { result: unknown }).result);
@@ -94,8 +100,8 @@ export async function pushQueue(queue: QueuedChange[], adapter: PushAdapter): Pr
       await adapter.refused(change, error.message, error.code ?? null);
     } else {
       if (outcome === 'retry') await adapter.retryLater(change, (res as { error: { message: string } }).error.message);
-      return { sent, stoppedBy: outcome };
+      return { sent, waiting, stoppedBy: outcome };
     }
   }
-  return { sent, stoppedBy: null };
+  return { sent, waiting, stoppedBy: null };
 }

@@ -42,6 +42,8 @@ export const MIGRATIONS = [
      error TEXT
    );
    CREATE INDEX IF NOT EXISTS records_status ON records (collection, status);`,
+  // 4: each queued change carries its own key, so the server makes it once however often it's re-sent.
+  `ALTER TABLE outbox ADD COLUMN idem TEXT;`,
 ];
 
 /** Once the server's own copy of a check-in has arrived, the phone's placeholder for it goes. */
