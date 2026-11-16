@@ -183,9 +183,14 @@ async function push() {
   const queue: QueuedChange[] = rows.map((r) => ({ seq: r.seq, method: r.method, path: r.path, body: r.body ? JSON.parse(r.body) : undefined, localId: r.local_id, attempts: r.attempts }));
   const result = await pushQueue(queue, {
     send: async (c) => {
+      // Read the change again just before sending: a change sent earlier in this same run
+      // may have just given a record its real id, and this one must use it.
+      const fresh = await getDb().getFirstAsync<{ path: string; body: string | null }>('SELECT path, body FROM outbox WHERE seq = ?', c.seq);
+      if (!fresh) return { wait: true };
+      // Still pointing at something only on this phone (its own "add" was refused or hasn't gone): hold it.
+      if (fresh.path.includes('local_') || fresh.body?.includes('local_')) return { wait: true };
       try {
-        // Later changes to a record created offline must point at its real id once it has one.
-        return { result: await api(c.path, { method: c.method, body: c.body }) };
+        return { result: await api(fresh.path, { method: c.method, body: fresh.body ? JSON.parse(fresh.body) : undefined }) };
       } catch (e) {
         if (e instanceof OfflineError) return { error: { offline: true, message: e.message } };
         if (e instanceof ApiError) return { error: { status: e.status, code: e.code, message: describe(e) } };
@@ -306,7 +311,9 @@ export function syncNow(): Promise<void> {
     setStatus({ state: 'syncing', message: null });
     try {
       await refreshCounts();
-      const pushed = await push();
+      let pushed = await push();
+      // Something was held for an id that this run has since received: send it now, not next time.
+      for (let i = 0; i < 5 && !pushed.stoppedBy && pushed.waiting && pushed.sent; i++) pushed = await push();
       if (pushed.stoppedBy === 'offline') throw new OfflineError();
       if ((await pushMarks()) === 'offline') throw new OfflineError();
       await pull();
