@@ -2,6 +2,7 @@
   "expo": {
     "name": "ShepherdOS",
     "slug": "shepherdos-mobile",
+    "owner": "lann12",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -69,7 +70,10 @@
     ],
     "scheme": "shepherdos",
     "extra": {
-      "defaultServer": "https://shepherdoss.vercel.app"
+      "defaultServer": "https://shepherdoss.vercel.app",
+      "eas": {
+        "projectId": "758664e6-9ade-4d5d-b83d-1ebe1f630d11"
+      }
     },
     "experiments": {
       "typedRoutes": true
