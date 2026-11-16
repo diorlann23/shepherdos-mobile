@@ -35,6 +35,10 @@ const MIGRATIONS = [
      error TEXT
    );
    CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
+  // 2: why a change was refused (e.g. CONFLICT for a possible duplicate), and which record it changes.
+  `ALTER TABLE outbox ADD COLUMN error_code TEXT;
+   ALTER TABLE outbox ADD COLUMN record_id TEXT;
+   CREATE INDEX IF NOT EXISTS outbox_record ON outbox (collection, record_id);`,
 ];
 
 export async function openDb() {
@@ -155,6 +159,16 @@ export async function listRecords<T>(collection: CollectionName, query: ListQuer
   }
   args.push(query.limit ?? 50, query.offset ?? 0);
   const rows = await getDb().getAllAsync<{ data: string }>(`SELECT data FROM records WHERE ${where.join(' AND ')} ORDER BY sort LIMIT ? OFFSET ?`, ...args);
+  return rows.map((r) => JSON.parse(r.data) as T);
+}
+
+/** Members of one household, head first. */
+export async function membersOfHousehold<T>(householdId: string): Promise<T[]> {
+  const rows = await getDb().getAllAsync<{ data: string }>(
+    `SELECT data FROM records WHERE collection = 'members' AND json_extract(data, '$.householdId') = ?
+     ORDER BY CASE json_extract(data, '$.householdRole') WHEN 'head' THEN 0 WHEN 'spouse' THEN 1 WHEN 'child' THEN 2 ELSE 3 END, sort`,
+    householdId,
+  );
   return rows.map((r) => JSON.parse(r.data) as T);
 }
 

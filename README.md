@@ -18,7 +18,18 @@ Phase 1, the foundation, is built:
   - A closed screen with WhatsApp / call / email buttons when the church is locked, suspended or waiting for approval.
 - An optional Face ID / fingerprint lock, a sync indicator on every screen, and light and dark themes.
 
-Next phases add the rest of ShepherdOS: editing members offline, attendance and check-in, giving and finance, events, groups, tasks, announcements, pastoral care, scripture projection and reports.
+Phase 2, members and households offline, is built:
+
+- Adding members with the full form or a quick first-timer form for the door. The forms follow the church's required and hidden field settings, and validate phone numbers, emails and dates the same way the server does.
+- Editing members, a one-tap status change, and households: create, edit, add or remove people, and set the head.
+- Changes show on the phone straight away and wait in the outbox:
+  - Only the fields that changed are sent.
+  - Someone added offline gets their real id and member number once synced, and later changes that point at them follow automatically.
+  - A pull never overwrites a change still waiting to be sent.
+- When the server refuses a change, the record's page shows why, with Fix, Discard, or (for a possible duplicate) Add anyway.
+- Buttons appear only where the person's role allows. The server checks everything again.
+
+Next phases add the rest of ShepherdOS: attendance and check-in, giving and finance, events, groups, tasks, announcements, pastoral care, scripture projection and reports.
 
 ## Running it
 

@@ -2,11 +2,18 @@ import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { SYNC_COLLECTIONS, SYNC_INTERVAL_MS, type CollectionName } from '@/constants';
 import { api, ApiError, OfflineError } from './api';
-import { getCursor, getDb, keepOnly, removeRecord, setCursor, upsertRecords } from './db';
+import { getCursor, getDb, getRecord, keepOnly, removeRecord, setCursor, upsertRecords } from './db';
 import { emit, subscribe } from './events';
 import { pullCollection, pushQueue, type QueuedChange } from './sync-core';
 
 export type SyncState = 'idle' | 'syncing' | 'offline' | 'error';
+
+/** The server's reason, with the first field problem spelled out ("Phone: Enter a valid phone number"). */
+function describe(e: ApiError) {
+  const fields = (e.details as { fieldErrors?: Record<string, string> } | undefined)?.fieldErrors;
+  const first = fields && Object.entries(fields)[0];
+  return first ? `${e.message} ${first[0]}: ${first[1]}` : e.message;
+}
 export interface SyncStatus {
   state: SyncState;
   lastSyncedAt: string | null;
@@ -51,16 +58,19 @@ export interface QueueInput {
   collection?: CollectionName;
   /** A record created offline, shown with this id until the server gives it a real one. */
   localId?: string;
+  /** The record this change is about: a pull won't overwrite it until the change is sent. */
+  recordId?: string;
 }
 
 export async function queueChange(change: QueueInput) {
   await getDb().runAsync(
-    'INSERT INTO outbox (method, path, body, collection, local_id, label, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO outbox (method, path, body, collection, local_id, record_id, label, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     change.method,
     change.path,
     change.body === undefined ? null : JSON.stringify(change.body),
     change.collection ?? null,
     change.localId ?? null,
+    change.recordId ?? change.localId ?? null,
     change.label,
     new Date().toISOString(),
   );
@@ -68,27 +78,83 @@ export async function queueChange(change: QueueInput) {
   await refreshCounts();
   void syncNow();
 }
+/** For changes edited in the outbox directly: update the counts and send. */
+queueChange.refresh = async () => {
+  await refreshCounts();
+  void syncNow();
+};
 
 export interface OutboxItem {
   seq: number;
   label: string;
   createdAt: string;
   error: string | null;
+  errorCode: string | null;
+  method: string;
+  path: string;
+  collection: CollectionName | null;
+  recordId: string | null;
 }
 export async function listOutbox(): Promise<OutboxItem[]> {
-  return getDb().getAllAsync<OutboxItem>('SELECT seq, label, created_at AS createdAt, error FROM outbox ORDER BY seq');
+  return getDb().getAllAsync<OutboxItem>(
+    'SELECT seq, label, created_at AS createdAt, error, error_code AS errorCode, method, path, collection, record_id AS recordId FROM outbox ORDER BY seq',
+  );
 }
-/** The person gave up on a change the server refused. */
+
+/** Changes still waiting (or refused) for one record: shown on its page. */
+export async function changesFor(collection: CollectionName, recordId: string): Promise<OutboxItem[]> {
+  return getDb().getAllAsync<OutboxItem>(
+    'SELECT seq, label, created_at AS createdAt, error, error_code AS errorCode, method, path, collection, record_id AS recordId FROM outbox WHERE collection = ? AND record_id = ? ORDER BY seq',
+    collection,
+    recordId,
+  );
+}
+
+/** A possible duplicate the person has checked: add it anyway. */
+export const canForce = (item: Pick<OutboxItem, 'errorCode' | 'method' | 'path'>) => item.errorCode === 'CONFLICT' && item.method === 'POST' && item.path === '/members';
+
+/**
+ * The person gave up on a change. What the phone showed for that record is put
+ * back to the server's version on the next sync; a record that only ever
+ * existed on the phone is removed.
+ */
 export async function discardChange(seq: number) {
+  const row = await getDb().getFirstAsync<{ collection: CollectionName | null; local_id: string | null; method: string }>('SELECT collection, local_id, method FROM outbox WHERE seq = ?', seq);
   await getDb().runAsync('DELETE FROM outbox WHERE seq = ?', seq);
-  emit('outbox');
-  await refreshCounts();
-}
-export async function retryChange(seq: number) {
-  await getDb().runAsync('UPDATE outbox SET error = NULL WHERE seq = ?', seq);
+  if (row?.collection) {
+    if (row.local_id && row.method === 'POST') {
+      await removeRecord(row.collection, row.local_id);
+      // Later changes that depended on it can't succeed either.
+      await getDb().runAsync('DELETE FROM outbox WHERE path LIKE ? OR body LIKE ?', `%${row.local_id}%`, `%${row.local_id}%`);
+    }
+    await resetCursor(row.collection);
+  }
   emit('outbox');
   await refreshCounts();
   void syncNow();
+}
+
+export async function retryChange(seq: number, options: { force?: boolean } = {}) {
+  if (options.force) {
+    const row = await getDb().getFirstAsync<{ body: string | null }>('SELECT body FROM outbox WHERE seq = ?', seq);
+    const body = row?.body ? JSON.parse(row.body) : {};
+    await getDb().runAsync('UPDATE outbox SET body = ? WHERE seq = ?', JSON.stringify({ ...body, force: true }), seq);
+  }
+  await getDb().runAsync('UPDATE outbox SET error = NULL, error_code = NULL WHERE seq = ?', seq);
+  emit('outbox');
+  await refreshCounts();
+  void syncNow();
+}
+
+/** Ids with changes not yet on the server: a pull must not overwrite what the person sees. */
+async function pendingIds(collection: CollectionName) {
+  const rows = await getDb().getAllAsync<{ record_id: string }>('SELECT DISTINCT record_id FROM outbox WHERE collection = ? AND record_id IS NOT NULL', collection);
+  return new Set(rows.map((r) => r.record_id));
+}
+
+/** The next pull fetches the whole collection again. */
+async function resetCursor(collection: CollectionName) {
+  await getDb().runAsync('DELETE FROM sync_state WHERE collection = ?', collection);
 }
 
 async function push() {
@@ -104,7 +170,7 @@ async function push() {
         return { result: await api(c.path, { method: c.method, body: c.body }) };
       } catch (e) {
         if (e instanceof OfflineError) return { error: { offline: true, message: e.message } };
-        if (e instanceof ApiError) return { error: { status: e.status, message: e.message } };
+        if (e instanceof ApiError) return { error: { status: e.status, code: e.code, message: describe(e) } };
         return { error: { status: 0, message: e instanceof Error ? e.message : 'Unknown error' } };
       }
     },
@@ -112,17 +178,20 @@ async function push() {
       await getDb().runAsync('DELETE FROM outbox WHERE seq = ?', c.seq);
       const collection = collections.get(c.seq);
       const real = (result as { id?: string } | null)?.id;
-      if (collection && c.localId && real) {
+      if (collection && c.localId && real && c.method === 'POST') {
+        // Created offline: the record takes its real id, and everything that pointed at the phone's id follows.
+        const local = await getRecord<Record<string, unknown>>(collection, c.localId);
         await removeRecord(collection, c.localId);
-        await upsertRecords(collection, [result as Record<string, unknown>]);
-        // Repoint queued follow-up changes (an edit made after an offline add).
-        await getDb().runAsync('UPDATE outbox SET path = REPLACE(path, ?, ?) WHERE path LIKE ?', c.localId, real, `%${c.localId}%`);
-      } else if (collection && real) {
-        await upsertRecords(collection, [result as Record<string, unknown>]);
+        await upsertRecords(collection, [{ ...(local ?? {}), ...(result as Record<string, unknown>), id: real, pending: false }]);
+        const like = `%${c.localId}%`;
+        await getDb().runAsync('UPDATE outbox SET path = REPLACE(path, ?, ?), body = REPLACE(body, ?, ?), record_id = REPLACE(record_id, ?, ?) WHERE path LIKE ? OR body LIKE ? OR record_id LIKE ?', c.localId, real, c.localId, real, c.localId, real, like, like, like);
+        await getDb().runAsync('UPDATE records SET data = REPLACE(data, ?, ?) WHERE data LIKE ?', c.localId, real, like);
+        emit('records');
       }
+      // Edits: the pull that follows brings the server's version.
     },
-    refused: async (c, message) => {
-      await getDb().runAsync('UPDATE outbox SET error = ?, attempts = attempts + 1 WHERE seq = ?', message, c.seq);
+    refused: async (c, message, code) => {
+      await getDb().runAsync('UPDATE outbox SET error = ?, error_code = ?, attempts = attempts + 1 WHERE seq = ?', message, code, c.seq);
     },
     retryLater: async (c) => {
       await getDb().runAsync('UPDATE outbox SET attempts = attempts + 1 WHERE seq = ?', c.seq);
@@ -144,7 +213,10 @@ async function pull() {
         if (ids) q.set('ids', '1');
         return api(`/sync/${collection}?${q}`);
       },
-      save: (rows) => upsertRecords(collection, rows),
+      save: async (rows) => {
+        const pending = await pendingIds(collection);
+        await upsertRecords(collection, pending.size ? rows.filter((r) => !pending.has(String(r.id))) : rows);
+      },
       keepOnly: (ids) => keepOnly(collection, ids),
       setCursor: (cursor) => setCursor(collection, cursor),
     }).catch((e) => {

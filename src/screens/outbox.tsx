@@ -1,6 +1,7 @@
 import { Alert, FlatList, View } from 'react-native';
+import { router } from 'expo-router';
 import { Badge, Card, EmptyState, Row, Text } from '@/components/ui';
-import { discardChange, listOutbox, retryChange, type OutboxItem } from '@/lib/sync';
+import { canForce, discardChange, listOutbox, retryChange, type OutboxItem } from '@/lib/sync';
 import { relativeTime } from '@/lib/format';
 import { useLocalQuery } from '@/hooks/use-local-query';
 import { space } from '@/theme';
@@ -12,7 +13,12 @@ export function Outbox() {
   const act = (item: OutboxItem) =>
     Alert.alert(item.label, item.error ?? undefined, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Try again', onPress: () => void retryChange(item.seq) },
+      canForce(item)
+        ? { text: 'Add anyway (not a duplicate)', onPress: () => void retryChange(item.seq, { force: true }) }
+        : { text: 'Try again', onPress: () => void retryChange(item.seq) },
+      ...(item.recordId && item.collection
+        ? [{ text: 'Open record', onPress: () => router.push(item.collection === 'members' ? `/member/${item.recordId}` : `/household/${item.recordId}`) }]
+        : []),
       { text: 'Discard change', style: 'destructive', onPress: () => void discardChange(item.seq) },
     ]);
   return (

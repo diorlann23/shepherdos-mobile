@@ -66,10 +66,17 @@ export function classifyPush(error: { offline?: boolean; status?: number } | nul
   return 'refused';
 }
 
+export interface PushError {
+  offline?: boolean;
+  status?: number;
+  code?: string;
+  message: string;
+}
+
 export interface PushAdapter {
-  send(change: QueuedChange): Promise<{ result: unknown } | { error: { offline?: boolean; status?: number; message: string } }>;
+  send(change: QueuedChange): Promise<{ result: unknown } | { error: PushError }>;
   done(change: QueuedChange, result: unknown): Promise<void>;
-  refused(change: QueuedChange, message: string): Promise<void>;
+  refused(change: QueuedChange, message: string, code: string | null): Promise<void>;
   retryLater(change: QueuedChange, message: string): Promise<void>;
 }
 
@@ -83,7 +90,8 @@ export async function pushQueue(queue: QueuedChange[], adapter: PushAdapter): Pr
       await adapter.done(change, (res as { result: unknown }).result);
       sent++;
     } else if (outcome === 'refused') {
-      await adapter.refused(change, (res as { error: { message: string } }).error.message);
+      const error = (res as { error: PushError }).error;
+      await adapter.refused(change, error.message, error.code ?? null);
     } else {
       if (outcome === 'retry') await adapter.retryLater(change, (res as { error: { message: string } }).error.message);
       return { sent, stoppedBy: outcome };

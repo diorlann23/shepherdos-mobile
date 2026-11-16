@@ -27,10 +27,28 @@ export interface Me {
     renewalContact: RenewalContact | null;
     currency: string;
     timezone: string;
+    defaultPhoneCountry: string;
     modules: string[];
+    settings: { memberFormRequired: string[]; memberFormHidden: string[] };
   } | null;
   orgs: { id: string; name: string; slug: string; access: string }[];
   roles: string[];
+  /** Every permission held somewhere, e.g. "member.create". */
+  permissions: string[];
+  /** Where some actions are allowed: everywhere, or these places (with everything under them). */
+  scopes: Record<string, 'all' | string[]>;
+  /** The part of the church this person may know about. */
+  nodes: OrgNode[];
+  rootNodeId: string | null;
+}
+
+export interface OrgNode {
+  id: string;
+  name: string;
+  kind: string;
+  parentId: string | null;
+  category: string | null;
+  isActive: boolean;
 }
 
 export interface MemberRow {
@@ -53,14 +71,23 @@ export interface MemberRow {
   dateJoined: string | null;
   lastAttendedAt: string | null;
   area: string | null;
+  middleName?: string | null;
+  maritalStatus?: string | null;
+  secondaryPhone?: string | null;
+  whatsapp?: string | null;
+  occupation?: string | null;
   updatedAt: string;
+  /** Added on this phone and not on the server yet. */
+  pending?: boolean;
 }
 
 export interface HouseholdRow {
   id: string;
   name: string;
+  nodeId: string;
   branch: string;
   address: string | null;
   phone: string | null;
   headName: string | null;
+  pending?: boolean;
 }

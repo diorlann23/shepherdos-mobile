@@ -1,10 +1,13 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, Badge, EmptyState, Text } from '@/components/ui';
 import { SyncPill } from '@/components/sync-pill';
+import { useAuth } from '@/lib/auth';
+import { can } from '@/lib/permissions';
+import { HouseholdList } from './households';
 import { listRecords } from '@/lib/db';
 import { syncNow } from '@/lib/sync';
 import { useLocalQuery } from '@/hooks/use-local-query';
@@ -16,7 +19,59 @@ import { font, radius, space, useTheme } from '@/theme';
 const PAGE = 60;
 export const statusTone = (s: string) => (s === 'visitor' ? 'warning' : s === 'new_convert' ? 'primary' : s === 'inactive' || s === 'deceased' || s === 'transferred' ? 'muted' : 'success') as 'warning' | 'primary' | 'muted' | 'success';
 
+/** The + button: what this person may add. */
+function useAddMenu() {
+  const { me } = useAuth();
+  const options: { label: string; go: () => void }[] = [];
+  if (can(me, 'member.create')) {
+    options.push({ label: 'New first-timer', go: () => router.push('/member/new?quick=1') });
+    options.push({ label: 'New member', go: () => router.push('/member/new') });
+  }
+  if (can(me, 'household.create')) options.push({ label: 'New household', go: () => router.push('/household/new') });
+  const open = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions({ options: [...options.map((o) => o.label), 'Cancel'], cancelButtonIndex: options.length }, (i) => options[i]?.go());
+    } else {
+      Alert.alert('Add', undefined, [...options.map((o) => ({ text: o.label, onPress: o.go })), { text: 'Cancel', style: 'cancel' as const }]);
+    }
+  };
+  return options.length ? open : null;
+}
+
 export function Members() {
+  const [tab, setTab] = useState<'people' | 'households'>('people');
+  const { colors } = useTheme();
+  const add = useAddMenu();
+  return (
+    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+      <View style={[styles.header, { paddingBottom: 0 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text size="title">Members</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <SyncPill />
+            {add ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Add" onPress={add} style={[styles.addBtn, { backgroundColor: colors.primary }]}>
+                <Ionicons name="add" size={24} color={colors.onPrimary} />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+        <View style={[styles.toggle, { backgroundColor: colors.muted }]}>
+          {(['people', 'households'] as const).map((t) => (
+            <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} onPress={() => setTab(t)} style={[styles.toggleItem, tab === t && { backgroundColor: colors.card }]}>
+              <Text size="small" weight="600" tone={tab === t ? 'default' : 'muted'}>
+                {t === 'people' ? 'People' : 'Households'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+      {tab === 'people' ? <People /> : <View style={{ flex: 1, paddingTop: space.md }}><HouseholdList /></View>}
+    </SafeAreaView>
+  );
+}
+
+function People() {
   const { colors } = useTheme();
   const sync = useSyncStatus();
   const [q, setQ] = useState('');
@@ -37,19 +92,15 @@ export function Members() {
             {[item.memberNumber, item.phone, item.branchName].filter(Boolean).join(' · ')}
           </Text>
         </View>
-        <Badge label={statusLabel(item.status)} tone={statusTone(item.status)} />
+        {item.pending ? <Badge label="Not synced" tone="warning" /> : <Badge label={statusLabel(item.status)} tone={statusTone(item.status)} />}
       </Pressable>
     ),
     [colors],
   );
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text size="title">Members</Text>
-          <SyncPill />
-        </View>
         <View style={[styles.search, { backgroundColor: colors.muted }]}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
@@ -105,7 +156,7 @@ export function Members() {
           )
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -114,4 +165,7 @@ const styles = StyleSheet.create({
   search: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderRadius: radius.md, paddingHorizontal: space.md, minHeight: 44 },
   chip: { borderRadius: radius.pill, borderWidth: 1, paddingHorizontal: space.md, paddingVertical: 6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
+  addBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  toggle: { flexDirection: 'row', borderRadius: radius.md, padding: 3, marginTop: space.md },
+  toggleItem: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: radius.sm },
 });
