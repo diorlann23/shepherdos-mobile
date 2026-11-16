@@ -284,11 +284,45 @@ async function dropSyncedPlaceholders() {
   emit('records:checkins');
 }
 
+type FirstPage = { rows: Record<string, unknown>[]; ids?: string[]; next: { since: string; after: string } | null; cursor: string };
+type BatchResult = FirstPage | { error: { status: number; code: string; message: string } };
+
+/** A list this person can't have, or one this server doesn't offer (the app is newer than the website): skip it. */
+const skippable = (status: number, code?: string) => status === 403 || status === 404 || (status === 422 && code === 'VALIDATION_ERROR');
+
+/**
+ * The first page of every list in one request (one request per sync rather
+ * than one per list), then further pages of long lists one by one. An older
+ * server without the combined request is asked list by list.
+ */
+async function fetchFirstPages(cursors: Map<CollectionName, string | null>): Promise<Record<string, BatchResult> | null> {
+  try {
+    const res = await api<{ results: Record<string, BatchResult> }>('/sync', {
+      method: 'POST',
+      body: { collections: [...cursors].map(([name, since]) => ({ name, ids: true, ...(since ? { since } : {}) })) },
+    });
+    return res.results;
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 405)) return null;
+    throw e;
+  }
+}
+
 async function pull() {
+  const cursors = new Map<CollectionName, string | null>();
+  for (const collection of SYNC_COLLECTIONS) cursors.set(collection, (await getCursor(collection))?.cursor ?? null);
+  const first = await fetchFirstPages(cursors);
+
   for (const collection of SYNC_COLLECTIONS) {
-    const saved = await getCursor(collection);
-    await pullCollection<Record<string, unknown>>(saved?.cursor ?? null, {
-      fetchPage: ({ since, after, ids }) => {
+    const prefetched = first?.[collection];
+    if (prefetched && 'error' in prefetched) {
+      if (skippable(prefetched.error.status, prefetched.error.code)) continue;
+      throw new ApiError(prefetched.error.status, prefetched.error.code, prefetched.error.message);
+    }
+    await pullCollection<Record<string, unknown>>(cursors.get(collection) ?? null, {
+      fetchPage: async ({ since, after, ids }) => {
+        // The combined request already brought the first page.
+        if (!after && prefetched) return prefetched as FirstPage;
         const q = new URLSearchParams();
         if (since) q.set('since', since);
         if (after) q.set('after', after);
@@ -302,10 +336,7 @@ async function pull() {
       keepOnly: (ids) => keepOnly(collection, ids),
       setCursor: (cursor) => setCursor(collection, cursor),
     }).catch((e) => {
-      // A feature the church doesn't have, or the person can't see: skip it, keep going.
-      if (e instanceof ApiError && e.status === 403) return 0;
-      // A list this server doesn't offer yet (the app is newer than the website): skip it too.
-      if (e instanceof ApiError && (e.status === 404 || (e.status === 422 && e.code === 'VALIDATION_ERROR'))) return 0;
+      if (e instanceof ApiError && skippable(e.status, e.code)) return 0;
       throw e;
     });
   }

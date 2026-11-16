@@ -91,6 +91,16 @@ export const INDEXERS: Record<CollectionName, Indexer> = {
   entries: (e) => ({ search: [e.giver, e.fund, e.reference].map(str).join(' ').toLowerCase(), sort: str(e.createdAt) || str(e.updatedAt), status: str(e.batchId) || null }),
   expenses: (e) => ({ search: [e.title, e.payee, e.category, e.nodeName, e.requestedBy].map(str).join(' ').toLowerCase(), sort: newestFirst(e.date), status: str(e.status) || null }),
   budgets: (b) => ({ search: [b.name, b.nodeName].map(str).join(' ').toLowerCase(), sort: newestFirst(b.startDate), status: str(b.status) || null }),
+  // Soonest due first; no due date last.
+  tasks: (t) => ({ search: [t.title, t.description, (t.assignedTo as { name?: string } | null)?.name, (t.assignedBy as { name?: string } | null)?.name].map(str).join(' ').toLowerCase(), sort: str(t.dueDate) || '9999', status: str(t.status) || null }),
+  colleagues: (u) => ({ search: [u.name, u.email].map(str).join(' ').toLowerCase(), sort: str(u.name).toLowerCase() }),
+  // Soonest first.
+  events: (e) => ({ search: [e.title, e.location, e.nodeName, e.category].map(str).join(' ').toLowerCase(), sort: str(e.startsAt), status: e.hidden ? 'hidden' : str(e.status) || null }),
+  registrations: (r) => ({ search: [r.name, r.phone].map(str).join(' ').toLowerCase(), sort: str(r.name).toLowerCase(), status: str(r.eventId) || null }),
+  announcements: (a) => ({ search: [a.title, a.body, a.nodeName].map(str).join(' ').toLowerCase(), sort: newestFirst(a.publishAt), status: str(a.status) || null }),
+  followups: (f) => ({ search: [f.name, f.phone, f.area, f.branch].map(str).join(' ').toLowerCase(), sort: newestFirst(f.firstVisitDate), status: str(f.stage) || null }),
+  prayer: (p) => ({ search: [(p._labels as Record<string, string> | undefined)?.[str(p.member)], p.requesterName, p.status].map(str).join(' ').toLowerCase(), sort: newestFirst(p.createdAt), status: str(p.status) || null }),
+  visits: (v) => ({ search: [(v._labels as Record<string, string> | undefined)?.[str(v.member)], v.type, v.visitedBy].map(str).join(' ').toLowerCase(), sort: newestFirst(v.date || v.createdAt), status: str(v.type) || null }),
 };
 
 export async function upsertRecords(collection: CollectionName, rows: Record<string, unknown>[]) {

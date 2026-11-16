@@ -40,6 +40,8 @@ export interface Me {
   /** The part of the church this person may know about. */
   nodes: OrgNode[];
   rootNodeId: string | null;
+  /** This person's own member record, if they have one. */
+  memberId: string | null;
 }
 
 export interface OrgNode {

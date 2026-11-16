@@ -1,11 +1,12 @@
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Text } from '@/components/ui';
 import { SyncPill } from '@/components/sync-pill';
 import { useAuth } from '@/lib/auth';
-import { countByStatus, countRecords } from '@/lib/db';
+import { countByStatus, countRecords, listRecords } from '@/lib/db';
+import type { ChurchEvent, FollowUp, Notice, Task } from '@/lib/ministry';
 import { formatDate, greeting } from '@/lib/format';
 import { syncNow } from '@/lib/sync';
 import { useLocalQuery } from '@/hooks/use-local-query';
@@ -58,6 +59,8 @@ export function Home() {
           <Stat icon="home" label="Households" value={s?.households} />
         </View>
 
+        <ThisWeek />
+
         <Card style={{ gap: space.md }}>
           <Text weight="600">People by status</Text>
           {s && s.members ? (
@@ -95,6 +98,46 @@ export function Home() {
   );
 }
 
+/** The week at a glance: my tasks, the next event, the newest notice, first-timers waiting. */
+function ThisWeek() {
+  const { colors } = useTheme();
+  const q = useLocalQuery(async () => {
+    const tasks = (await listRecords<Task>('tasks', { limit: 1000 })).filter((t) => t.isMine && ['assigned', 'accepted', 'in_progress'].includes(t.status));
+    const events = (await listRecords<ChurchEvent>('events', { limit: 200 })).filter((e) => !e.hidden && e.status === 'published' && new Date(e.startsAt).getTime() > Date.now() - 3_600_000);
+    const notices = await listRecords<Notice>('announcements', { status: 'published', limit: 1 });
+    const firstTimers = (await listRecords<FollowUp>('followups', { status: 'new', limit: 500 })).length;
+    return { tasks, next: events[0], notice: notices[0], firstTimers };
+  }, ['records:tasks', 'records:events', 'records:announcements', 'records:followups', 'records']);
+  const d = q.data;
+  if (!d || (!d.tasks.length && !d.next && !d.notice && !d.firstTimers)) return null;
+  const item = (icon: keyof typeof Ionicons.glyphMap, title: string, sub: string, href: string, alert?: boolean) => (
+    <Pressable key={title} accessibilityRole="button" onPress={() => router.push(href as never)} style={({ pressed }) => [styles.weekRow, pressed && { backgroundColor: colors.muted }]}>
+      <Ionicons name={icon} size={20} color={alert ? colors.danger : colors.primary} />
+      <View style={{ flex: 1 }}>
+        <Text weight="600" numberOfLines={1}>
+          {title}
+        </Text>
+        <Text size="small" tone="muted" numberOfLines={1}>
+          {sub}
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+    </Pressable>
+  );
+  const overdue = d.tasks.filter((t) => t.overdue).length;
+  return (
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
+      <Text weight="600" style={{ paddingHorizontal: space.lg, paddingTop: space.lg }}>
+        This week
+      </Text>
+      {d.tasks.length ? item('checkbox-outline', `${d.tasks.length} task${d.tasks.length === 1 ? '' : 's'} for you`, overdue ? `${overdue} overdue` : d.tasks[0].title, '/tasks', overdue > 0) : null}
+      {d.next ? item('calendar-outline', d.next.title, `${formatDate(d.next.startsAt)} · ${d.next.location ?? d.next.nodeName}`, `/events/${d.next.id}`) : null}
+      {d.firstTimers ? item('person-add-outline', `${d.firstTimers} first-timer${d.firstTimers === 1 ? '' : 's'} to contact`, 'Waiting for a first call', '/firsttimers') : null}
+      {d.notice ? item('megaphone-outline', d.notice.title, d.notice.body, `/notices/${d.notice.id}`) : null}
+    </Card>
+  );
+}
+
 function Stat({ icon, label, value, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: number | undefined; onPress?: () => void }) {
   const { colors } = useTheme();
   return (
@@ -114,6 +157,7 @@ const styles = StyleSheet.create({
   wrap: { padding: space.lg, gap: space.lg, paddingBottom: space.xxl },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
   stat: { flexBasis: '47%', flexGrow: 1, gap: space.xs },
+  weekRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
   statIcon: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', marginBottom: space.xs },
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
   bar: { height: 6, borderRadius: 3 },
