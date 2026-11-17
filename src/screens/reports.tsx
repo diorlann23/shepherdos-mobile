@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Badge, Button, Card, EmptyState, Input, Row, SectionTitle, Text } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, IconTile, Input, Row, SectionTitle, Text } from '@/components/ui';
+import { AiText } from '@/components/ai-text';
+import { summariseReport } from '@/lib/ai';
 import { DateField, SelectField } from '@/components/fields';
 import { PendingBanner } from '@/components/pending-banner';
 import { useAuth } from '@/lib/auth';
@@ -157,7 +159,7 @@ export function ReportRunScreen({ reportKey }: { reportKey: string }) {
           {error ? <Text tone="danger">{error}</Text> : null}
         </Card>
       ) : null}
-      {run ? <ResultView run={run} canShare={can(me, 'report.export')} /> : null}
+      {run ? <ResultView run={run} canShare={can(me, 'report.export')} category={def?.category} /> : null}
     </ScrollView>
   );
 }
@@ -176,8 +178,11 @@ export function SavedRunScreen({ index }: { index: number }) {
   );
 }
 
-function ResultView({ run, canShare }: { run: SavedRun; canShare: boolean }) {
+function ResultView({ run, canShare, category }: { run: SavedRun; canShare: boolean; category?: string }) {
   const { colors } = useTheme();
+  const { me } = useAuth();
+  // AI summaries: the church turned them on; security reports are never summarised.
+  const canSummarise = !!me?.org?.settings.aiSummaries && category !== 'Security & admin' && run.result.rows.length > 0;
   const r: ReportResult = run.result;
   const currency = r.currency ?? 'GHS';
   const [sharing, setSharing] = useState<string | null>(null);
@@ -244,6 +249,7 @@ function ResultView({ run, canShare }: { run: SavedRun; canShare: boolean }) {
           {r.note}
         </Text>
       ) : null}
+      {canSummarise ? <SummaryCard run={run} /> : null}
       {canShare ? (
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <Button title="PDF" icon="document-outline" variant="secondary" loading={sharing === 'pdf'} disabled={!!sharing} style={{ flex: 1 }} onPress={() => void share('pdf')} />
@@ -252,6 +258,50 @@ function ResultView({ run, canShare }: { run: SavedRun; canShare: boolean }) {
         </View>
       ) : null}
     </View>
+  );
+}
+
+/** A short written summary of this result, by AI on the server (needs a connection). */
+function SummaryCard({ run }: { run: SavedRun }) {
+  const { colors } = useTheme();
+  const [state, setState] = useState<{ text?: string; error?: string; busy?: boolean }>({});
+  const go = async () => {
+    setState({ busy: true });
+    try {
+      const res = await summariseReport(run.key, run.filters);
+      setState({ text: res.text });
+    } catch (e) {
+      setState({ error: e instanceof OfflineError ? 'You’re offline. Connect to the internet for a summary.' : errorMessage(e) });
+    }
+  };
+  if (!state.text && !state.busy && !state.error) {
+    return <Button title="Summarise this report" icon="sparkles-outline" variant="secondary" onPress={() => void go()} />;
+  }
+  return (
+    <Card style={{ gap: space.md, borderColor: colors.accent, borderWidth: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <IconTile icon="sparkles" tone="accent" size={30} />
+        <Text weight="700" style={{ flex: 1 }}>
+          Summary
+        </Text>
+        {!state.busy ? <Button title="Again" variant="ghost" onPress={() => void go()} style={{ minHeight: 34, paddingHorizontal: space.sm }} /> : null}
+      </View>
+      {state.busy ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+          <ActivityIndicator color={colors.primary} />
+          <Text tone="muted">Reading the report and writing a summary…</Text>
+        </View>
+      ) : state.error ? (
+        <Text tone="danger">{state.error}</Text>
+      ) : (
+        <AiText text={state.text!} />
+      )}
+      {state.text ? (
+        <Text size="tiny" tone="muted">
+          Written by AI from this report’s figures. Check before you share it.
+        </Text>
+      ) : null}
+    </Card>
   );
 }
 

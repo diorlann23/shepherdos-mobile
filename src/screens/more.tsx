@@ -114,6 +114,12 @@ export function More() {
 
         <MinistryLinks />
 
+        <SectionTitle>Help</SectionTitle>
+        <Card style={styles.list}>
+          {me?.ai?.assistant ? <Row icon="sparkles-outline" title="Ask a question" subtitle="Answers from the user guide, by AI" onPress={() => router.push('/ask')} /> : null}
+          <Row icon="book-outline" title="User guide" subtitle="Opens on the ShepherdOS website" onPress={() => void Linking.openURL(`${getServer().replace(/\/+$/, '')}/help#29-the-shepherdos-mobile-app`)} />
+        </Card>
+
         <SectionTitle>Church</SectionTitle>
         <Card style={styles.list}>
           <Row icon="business-outline" title={me?.org?.name ?? ''} subtitle="Signed in to" />
