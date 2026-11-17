@@ -11,7 +11,7 @@ import { getRecord, listRecords } from '@/lib/db';
 import { METHOD_LABELS, canTakeCheckIns, checkIn, checkInsFor, householdOf, setServiceStatus, undoCheckIn, type CheckIn, type RosterPerson, type Service } from '@/lib/attendance';
 import { useLocalQuery } from '@/hooks/use-local-query';
 import { formatDate } from '@/lib/format';
-import { font, radius, space, useTheme } from '@/theme';
+import { elevation, font, radius, space, useTheme } from '@/theme';
 
 /** One service: check people in, see who's here, scan cards, add first-timers, record the headcount. */
 export function ServiceScreen({ id }: { id: string }) {
@@ -204,10 +204,10 @@ function HereRow({ c, p, onUndo }: { c: CheckIn; p: RosterPerson | undefined; on
 }
 
 function Stat({ label, value, onPress }: { label: string; value: number; onPress?: () => void }) {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   return (
-    <Pressable accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress} style={[styles.stat, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Text size="title">{value.toLocaleString()}</Text>
+    <Pressable accessibilityRole={onPress ? 'button' : undefined} disabled={!onPress} onPress={onPress} style={[styles.stat, { backgroundColor: colors.card, borderColor: dark ? colors.border : 'transparent' }, elevation(colors, dark)]}>
+      <Text size="title" weight="800">{value.toLocaleString()}</Text>
       <Text size="tiny" tone="muted">
         {label}
         {onPress ? ' ›' : ''}

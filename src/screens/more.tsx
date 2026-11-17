@@ -1,8 +1,7 @@
 import { Alert, Linking, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
-import { Avatar, Badge, Card, Row, SectionTitle, Text } from '@/components/ui';
+import { Avatar, Badge, Card, Emblem, Row, ScreenHeader, SectionTitle, Text } from '@/components/ui';
 import { can, groupsOf } from '@/lib/permissions';
 import { listRecords } from '@/lib/db';
 import { OPEN_TASK, type FollowUp, type Task } from '@/lib/ministry';
@@ -42,7 +41,7 @@ function MinistryLinks() {
       <SectionTitle>Ministry</SectionTitle>
       <Card style={styles.list}>
         {links.map((l) => (
-          <Row key={l.title} icon={l.icon} title={l.title} onPress={() => router.push(l.href as never)} right={l.badge ? <Badge label={String(l.badge)} tone="primary" /> : undefined} />
+          <Row key={l.title} icon={l.icon} title={l.title} onPress={() => router.push(l.href as never)} right={l.badge ? <Badge label={String(l.badge)} tone="accent" /> : undefined} />
         ))}
       </Card>
     </>
@@ -89,20 +88,20 @@ export function More() {
     ]);
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={styles.wrap}>
-        <Text size="title">More</Text>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: space.xxl }}>
+      <ScreenHeader title="More" overlap={40} />
+      <View style={[styles.wrap, { marginTop: -40 }]}>
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
           <Avatar name={me?.user.name ?? '?'} size={52} />
           <View style={{ flex: 1 }}>
-            <Text weight="600">{me?.user.name}</Text>
+            <Text weight="700">{me?.user.name}</Text>
             <Text size="small" tone="muted">
               {me?.user.email}
             </Text>
             {me?.roles.length ? (
-              <Text size="small" tone="muted">
-                {me.roles.join(', ')}
-              </Text>
+              <View style={{ marginTop: space.xs }}>
+                <Badge label={me.roles.join(', ')} tone="accent" />
+              </View>
             ) : null}
           </View>
         </Card>
@@ -165,11 +164,14 @@ export function More() {
           <Row icon="log-out-outline" title="Sign out" danger onPress={confirmSignOut} />
         </Card>
 
-        <Text size="tiny" tone="muted" style={{ textAlign: 'center', marginTop: space.lg }}>
-          ShepherdOS {Constants.expoConfig?.version} · {getServer().replace(/^https?:\/\//, '')}
-        </Text>
-      </ScrollView>
-    </SafeAreaView>
+        <View style={{ alignItems: 'center', gap: space.sm, marginTop: space.xl }}>
+          <Emblem size={36} />
+          <Text size="tiny" tone="muted" style={{ textAlign: 'center' }}>
+            ShepherdOS {Constants.expoConfig?.version} · {getServer().replace(/^https?:\/\//, '')}
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
 

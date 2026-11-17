@@ -18,7 +18,16 @@ export default function AppLayout() {
   useEffect(() => handlePushTaps(), []);
   useEffect(() => watchForUpdates(), []);
   return (
-    <Stack screenOptions={{ headerTintColor: colors.primary, headerStyle: { backgroundColor: colors.background }, headerShadowVisible: false, contentStyle: { backgroundColor: colors.background } }}>
+    <Stack
+      screenOptions={{
+        // The same navy band as the tabs, so every screen is clearly ShepherdOS.
+        headerTintColor: colors.headerText,
+        headerStyle: { backgroundColor: colors.header },
+        headerTitleStyle: { color: colors.headerText, fontWeight: '700' },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="member/[id]/index" options={{ title: 'Member', headerBackTitle: 'Members' }} />
       <Stack.Screen name="member/[id]/edit" options={{ title: 'Edit member', presentation: 'modal' }} />

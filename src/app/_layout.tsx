@@ -38,7 +38,8 @@ function Root() {
   const base = dark ? DarkTheme : DefaultTheme;
   return (
     <ThemeProvider value={{ ...base, colors: { ...base.colors, background: colors.background, card: colors.card, text: colors.text, border: colors.border, primary: colors.primary } }}>
-      <StatusBar style={dark ? 'light' : 'dark'} />
+      {/* Every screen starts with a navy band, so the clock and battery are always white. */}
+      <StatusBar style="light" />
       <LockProvider active={state === 'ready'}>
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
