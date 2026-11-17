@@ -68,6 +68,7 @@ export default function AppLayout() {
       <Stack.Screen name="reports/branch/[id]" options={{ title: 'Branch report' }} />
       <Stack.Screen name="reports/branch/new" options={{ title: 'Start a branch report', presentation: 'modal' }} />
       <Stack.Screen name="outbox" options={{ title: 'Waiting to sync' }} />
+      <Stack.Screen name="ask" options={{ title: 'Ask a question', headerBackTitle: 'More' }} />
     </Stack>
   );
 }

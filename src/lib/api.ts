@@ -36,14 +36,14 @@ const TIMEOUT_MS = 20_000;
 /** Names the app and phone to the server (see user-agent.ts). */
 export const USER_AGENT = appUserAgent(Constants.expoConfig?.version ?? '0', { os: Platform.OS, version: Platform.Version, constants: Platform.constants as Record<string, unknown> | undefined });
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown; signal?: AbortSignal; headers?: Record<string, string> } = {}): Promise<T> {
+export async function api<T>(path: string, init: { method?: string; body?: unknown; signal?: AbortSignal; headers?: Record<string, string>; /** Longer for AI answers, which can take a minute. */ timeoutMs?: number } = {}): Promise<T> {
   const headers: Record<string, string> = { accept: 'application/json', 'x-shepherdos-client': 'mobile', 'user-agent': USER_AGENT, ...init.headers };
   const token = getToken();
   if (token) headers.authorization = `Session ${token}`;
   if (init.body !== undefined) headers['content-type'] = 'application/json';
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), init.timeoutMs ?? TIMEOUT_MS);
   init.signal?.addEventListener('abort', () => controller.abort());
   let res: Response;
   try {

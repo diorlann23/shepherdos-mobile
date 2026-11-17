@@ -29,7 +29,7 @@ export interface Me {
     timezone: string;
     defaultPhoneCountry: string;
     modules: string[];
-    settings: { memberFormRequired: string[]; memberFormHidden: string[] };
+    settings: { memberFormRequired: string[]; memberFormHidden: string[]; /** The church turned on AI summaries of reports. */ aiSummaries?: boolean };
   } | null;
   orgs: { id: string; name: string; slug: string; access: string }[];
   roles: string[];
@@ -42,6 +42,8 @@ export interface Me {
   rootNodeId: string | null;
   /** This person's own member record, if they have one. */
   memberId: string | null;
+  /** The AI help assistant is set up on the server (absent on older servers). */
+  ai?: { assistant: boolean };
 }
 
 export interface OrgNode {
