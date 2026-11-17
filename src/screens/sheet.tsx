@@ -9,7 +9,7 @@ import { SHEET_STATUS, entriesOf, methodLabel, removeEntry, setCashCount, sheetA
 import { denominationLabel, formatMoney } from '@/lib/money';
 import { formatDate } from '@/lib/format';
 import { useLocalQuery } from '@/hooks/use-local-query';
-import { font, radius, space, useTheme } from '@/theme';
+import { elevation, font, radius, space, useTheme } from '@/theme';
 
 /**
  * A counting sheet: the cash counted (notes and coins), every envelope and
@@ -62,8 +62,15 @@ export function SheetScreen({ id }: { id: string }) {
       </View>
       <PendingBanner collection="batches" id={sheet.id} />
 
+      <Card style={{ gap: 2 }}>
+        <Text size="small" tone="muted" weight="600">
+          Total
+        </Text>
+        <Text size="title" weight="800" numberOfLines={1} adjustsFontSizeToFit>
+          {money(t.entriesTotal)}
+        </Text>
+      </Card>
       <View style={styles.stats}>
-        <Stat label="Total" value={money(t.entriesTotal)} />
         <Stat label="Cash counted" value={money(t.counted)} tone={t.cashMatches ? undefined : 'danger'} />
         <Stat label="Entries" value={String(t.entryCount)} />
       </View>
@@ -186,9 +193,9 @@ function CashCount({ sheet, onDone }: { sheet: Sheet; onDone: () => void }) {
 }
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: 'danger' }) {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   return (
-    <View style={[styles.stat, { backgroundColor: colors.card, borderColor: tone ? colors.danger : colors.border }]}>
+    <View style={[styles.stat, { backgroundColor: colors.card, borderColor: tone ? colors.danger : dark ? colors.border : 'transparent' }, elevation(colors, dark)]}>
       <Text weight="700" tone={tone} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>

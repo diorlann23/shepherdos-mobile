@@ -1,9 +1,8 @@
 import { useCallback, useState } from 'react';
 import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Avatar, Badge, EmptyState, Text } from '@/components/ui';
+import { Avatar, Badge, EmptyState, HeaderButton, ScreenHeader, Segmented, Text } from '@/components/ui';
 import { SyncPill } from '@/components/sync-pill';
 import { useAuth } from '@/lib/auth';
 import { can } from '@/lib/permissions';
@@ -43,31 +42,22 @@ export function Members() {
   const { colors } = useTheme();
   const add = useAddMenu();
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-      <View style={[styles.header, { paddingBottom: 0 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text size="title">Members</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-            <SyncPill />
-            {add ? (
-              <Pressable accessibilityRole="button" accessibilityLabel="Add" onPress={add} style={[styles.addBtn, { backgroundColor: colors.primary }]}>
-                <Ionicons name="add" size={24} color={colors.onPrimary} />
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-        <View style={[styles.toggle, { backgroundColor: colors.muted }]}>
-          {(['people', 'households'] as const).map((t) => (
-            <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} onPress={() => setTab(t)} style={[styles.toggleItem, tab === t && { backgroundColor: colors.card }]}>
-              <Text size="small" weight="600" tone={tab === t ? 'default' : 'muted'}>
-                {t === 'people' ? 'People' : 'Households'}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+    <View style={{ flex: 1 }}>
+      <ScreenHeader title="Members" right={add ? <HeaderButton icon="add" label="Add" accent onPress={add} /> : undefined}>
+        <SyncPill onDark />
+      </ScreenHeader>
+      <View style={[styles.header, { paddingBottom: 0, paddingTop: space.md }]}>
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'people', label: 'People' },
+            { value: 'households', label: 'Households' },
+          ]}
+        />
       </View>
       {tab === 'people' ? <People /> : <View style={{ flex: 1, paddingTop: space.md }}><HouseholdList /></View>}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -165,7 +155,4 @@ const styles = StyleSheet.create({
   search: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderRadius: radius.md, paddingHorizontal: space.md, minHeight: 44 },
   chip: { borderRadius: radius.pill, borderWidth: 1, paddingHorizontal: space.md, paddingVertical: 6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
-  addBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  toggle: { flexDirection: 'row', borderRadius: radius.md, padding: 3, marginTop: space.md },
-  toggleItem: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: radius.sm },
 });

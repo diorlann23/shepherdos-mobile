@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Badge, Button, Card, EmptyState, SectionTitle, Text } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ScreenHeader, SectionTitle, Segmented, Text } from '@/components/ui';
 import { SyncPill } from '@/components/sync-pill';
 import { useAuth } from '@/lib/auth';
 import { useLock } from '@/lib/lock';
@@ -35,27 +34,18 @@ export function Finance() {
   const sync = useSyncStatus();
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={styles.wrap} refreshControl={<RefreshControl refreshing={sync.state === 'syncing'} onRefresh={() => void syncNow()} tintColor={colors.primary} />}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text size="title">Finance</Text>
-          <SyncPill />
-        </View>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: space.xxl }} refreshControl={<RefreshControl refreshing={sync.state === 'syncing'} onRefresh={() => void syncNow()} tintColor={colors.headerText} />}>
+      <ScreenHeader title="Finance">
+        <SyncPill onDark />
+      </ScreenHeader>
+      <View style={styles.wrap}>
         <LockReminder />
         {tabs.length > 1 ? (
-          <View style={[styles.toggle, { backgroundColor: colors.muted }]}>
-            {tabs.map((t) => (
-              <Pressable key={t} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} onPress={() => setTab(t)} style={[styles.toggleItem, tab === t && { backgroundColor: colors.card }]}>
-                <Text size="small" weight="600" tone={tab === t ? 'default' : 'muted'}>
-                  {t === 'giving' ? 'Giving' : t === 'expenses' ? 'Expenses' : 'Budgets'}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <Segmented value={tab} onChange={setTab} options={tabs.map((t) => ({ value: t, label: t === 'giving' ? 'Giving' : t === 'expenses' ? 'Expenses' : 'Budgets' }))} />
         ) : null}
         {tab === 'giving' ? <Giving /> : tab === 'expenses' ? <Expenses /> : <Budgets />}
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -271,8 +261,6 @@ function Budgets() {
 
 const styles = StyleSheet.create({
   wrap: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
-  toggle: { flexDirection: 'row', borderRadius: radius.md, padding: 3 },
-  toggleItem: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: radius.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth },
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
   bar: { height: 6, borderRadius: 3 },

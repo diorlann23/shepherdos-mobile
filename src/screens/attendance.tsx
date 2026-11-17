@@ -1,8 +1,7 @@
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Badge, Button, Card, EmptyState, SectionTitle, Text } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ScreenHeader, SectionTitle, Text } from '@/components/ui';
 import { SyncPill } from '@/components/sync-pill';
 import { useAuth } from '@/lib/auth';
 import { can } from '@/lib/permissions';
@@ -38,12 +37,11 @@ export function Attendance() {
   const canStart = can(me, 'attendance.create');
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={styles.wrap} refreshControl={<RefreshControl refreshing={sync.state === 'syncing'} onRefresh={() => void syncNow()} tintColor={colors.primary} />}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text size="title">Attendance</Text>
-          <SyncPill />
-        </View>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: space.xxl }} refreshControl={<RefreshControl refreshing={sync.state === 'syncing'} onRefresh={() => void syncNow()} tintColor={colors.headerText} />}>
+      <ScreenHeader title="Attendance">
+        <SyncPill onDark />
+      </ScreenHeader>
+      <View style={styles.wrap}>
 
         <SectionTitle>Today</SectionTitle>
         {today.length ? (
@@ -68,8 +66,8 @@ export function Attendance() {
         ) : !q.loading ? (
           <EmptyState icon="calendar-outline" title="No services yet" text="Services from the last 60 days appear here." />
         ) : null}
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </ScrollView>
   );
 }
 
