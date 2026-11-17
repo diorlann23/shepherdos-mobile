@@ -1,4 +1,7 @@
 import { getServer, getToken, setToken } from './secure';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import { appUserAgent } from './user-agent';
 
 /** An answer from the server that wasn't a success: wrong password, no permission, locked church... */
 export class ApiError extends Error {
@@ -30,8 +33,11 @@ export function onAuthProblem(listener: Listener) {
 
 const TIMEOUT_MS = 20_000;
 
+/** Names the app and phone to the server (see user-agent.ts). */
+export const USER_AGENT = appUserAgent(Constants.expoConfig?.version ?? '0', { os: Platform.OS, version: Platform.Version, constants: Platform.constants as Record<string, unknown> | undefined });
+
 export async function api<T>(path: string, init: { method?: string; body?: unknown; signal?: AbortSignal; headers?: Record<string, string> } = {}): Promise<T> {
-  const headers: Record<string, string> = { accept: 'application/json', 'x-shepherdos-client': 'mobile', ...init.headers };
+  const headers: Record<string, string> = { accept: 'application/json', 'x-shepherdos-client': 'mobile', 'user-agent': USER_AGENT, ...init.headers };
   const token = getToken();
   if (token) headers.authorization = `Session ${token}`;
   if (init.body !== undefined) headers['content-type'] = 'application/json';

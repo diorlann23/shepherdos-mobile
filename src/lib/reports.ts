@@ -1,6 +1,6 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { api, ApiError, OfflineError } from './api';
+import { api, ApiError, OfflineError, USER_AGENT } from './api';
 import { getToken, getServer } from './secure';
 import { kvGet, kvSet, upsertRecords } from './db';
 import { emit } from './events';
@@ -108,7 +108,7 @@ export async function shareReport(key: string, title: string, filters: Record<st
   try {
     res = await fetch(`${getServer()}/api/v1/reports/${key}/export`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-shepherdos-client': 'mobile', authorization: `Session ${getToken() ?? ''}` },
+      headers: { 'content-type': 'application/json', 'x-shepherdos-client': 'mobile', 'user-agent': USER_AGENT, authorization: `Session ${getToken() ?? ''}` },
       body: JSON.stringify({ filters, format }),
       credentials: 'omit',
     });
